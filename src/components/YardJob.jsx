@@ -255,6 +255,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
         <div className="yard-grass" />
         <div className="yard-house">🏡</div>
 
+        <div className="yard-target-field">
         {phase.id === 'find' && objects.bushes.filter((b) => !b.found).map((b) => (
           <button key={b.id} className="yard-obj bush" style={{ left: `${b.x}%`, top: `${b.y}%` }} onClick={() => onBush(b.id)} title="Tap to search">
             🌳<span className="question">?</span>
@@ -285,6 +286,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
           <div key={l.id} className="yard-obj raked" style={{ left: `${l.x}%`, top: `${l.y}%` }}>🍁</div>
         ))}
 
+        </div>
         {chaos?.type === 'sprinkler' && <div className="sprinkler-overlay">💦 SPRINKLER! 💦</div>}
         {chaos?.type === 'dog' && <button className="chaos-dog" onClick={onChaosDog}>🐕</button>}
         {chaos?.type === 'gust' && <div className="gust-overlay">🍃🍃🍃</div>}

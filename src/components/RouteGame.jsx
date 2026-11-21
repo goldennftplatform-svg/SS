@@ -139,9 +139,12 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
     })
   }, [pos, lane])
 
-  const visiblePiles = PILES.filter((p) => p.at > pos - 8 && p.at < pos + 34 && !cleared.includes(p.id))
+  const visiblePiles = PILES.filter((p) => p.at > pos - Math.max(8,scoopRadius) && p.at < pos + 34 && !cleared.includes(p.id))
   const visibleHazards = HAZARDS.filter((h) => h.at > pos - 8 && h.at < pos + 34)
   const lanePositions = [22, 50, 78]
+  const groundY = at => `${78 - (at - pos) * 2}%`
+  const inReach = p => p.lane === lane && Math.abs(p.at - pos) < scoopRadius
+  const ready = visiblePiles.some(inReach)
 
   return (
     <div className={`route-game ${bump ? 'bumping' : ''}`}>
@@ -168,15 +171,15 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
         <div className="road">
           {[0, 1, 2].map((l) => <div key={l} className="lane-line" style={{ left: `${lanePositions[l] - 7}%` }} />)}
           {visiblePiles.map((p) => (
-            <div key={p.id} className="pile" style={{ left: `${lanePositions[p.lane]}%`, top: `${18 + (p.at - pos) * 0.55}%`, opacity: Math.max(0.2, 1 - Math.abs(p.at - pos) / 30) }}>💩</div>
+            <div key={p.id} className={`pile ${inReach(p)?'in-reach':''}`} style={{ left: `${lanePositions[p.lane]}%`, top: groundY(p.at) }}>💩</div>
           ))}
           {visibleHazards.map((h) => (
-            <div key={h.id} className={`hazard hazard-${h.type}`} style={{ left: `${lanePositions[h.lane]}%`, top: `${18 + (h.at - pos) * 0.55}%` }}>
+            <div key={h.id} className={`hazard hazard-${h.type}`} style={{ left: `${lanePositions[h.lane]}%`, top: groundY(h.at) }}>
               {h.type === 'sprinkler' ? '💦' : '🐶'}
             </div>
           ))}
           {FRIENDLY_DOG_AT.filter((at) => at > pos - 5 && at < pos + 28).map((at) => (
-            <div key={at} className="friendly-dog" style={{ left: '78%', top: `${18 + (at - pos) * 0.55}%` }}>🐕</div>
+            <div key={at} className="friendly-dog" style={{ left: '78%', top: groundY(at) }}>🐕</div>
           ))}
           <div className="player" style={{ left: `${lanePositions[lane]}%`, '--player-color': char.color }}>
             <div className="player-char"><CharacterSprite character={char} /></div>
@@ -193,7 +196,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
 
         <div className="mobile-controls">
           <button onClick={() => { laneRef.current = Math.max(0, laneRef.current - 1); setLane(laneRef.current) }}>◀</button>
-          <button className="scoop-btn" onClick={doScoop}>SCOOP 🧹</button>
+          <button className={`scoop-btn ${ready?'ready':''}`} onClick={doScoop}>{ready?'SCOOP NOW!':'SCOOP 🧹'}</button>
           <button onClick={() => { laneRef.current = Math.min(2, laneRef.current + 1); setLane(laneRef.current) }}>▶</button>
           <button onClick={doWave}>WAVE 🐕</button>
         </div>
