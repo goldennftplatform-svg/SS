@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { YARD_PHASES } from '../data/gameData.js'
 import { characterById } from '../game/engine.js'
 import CharacterSprite from './CharacterSprite.jsx'
+import { audio } from '../audio/chiptune.js'
 
 const MAX_SCORE = 880
 const rand = (min, max) => min + Math.random() * (max - min)
@@ -22,7 +23,7 @@ function makeObjects() {
   return { bushes, poops, strips, leaves }
 }
 
-export default function YardJob({ market, characterId, perks = [], upgrades = {}, onFinish, onQuit }) {
+export default function YardJob({ market, characterId, perks = [], upgrades = {}, onFinish, onQuit, onCallout }) {
   const char = characterById(characterId)
   const hasPerk = useCallback((id) => perks.includes(id), [perks])
   const phaseDuration = YARD_PHASES[0].duration + (hasPerk('rally-timer') ? 4 : 0)
@@ -44,6 +45,15 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
   const phaseRef = useRef(0)
   const phaseLockRef = useRef(false)
   const finishedRef = useRef(false)
+  const tierRef = useRef(0)
+  const foundOnce = useRef(false)
+
+  // Combo milestones get their own voice line + chips sound.
+  useEffect(() => {
+    if (combo >= 20 && tierRef.current < 3) { tierRef.current = 3; audio.combo(3); onCallout?.('legend') }
+    else if (combo >= 10 && tierRef.current < 2) { tierRef.current = 2; audio.combo(2); onCallout?.('storm') }
+    else if (combo >= 5 && tierRef.current < 1) { tierRef.current = 1; audio.combo(1); onCallout?.('hotStreak') }
+  }, [combo, onCallout])
 
   const addScore = useCallback((n, comboGain = 0) => {
     scoreRef.current += n
@@ -74,6 +84,8 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
     if (phaseLockRef.current || finishedRef.current) return
     phaseLockRef.current = true
     addScore(50)
+    audio.phase()
+    onCallout?.('phase')
     setBanner('✨ PHASE CLEAR! +50')
     const next = phaseRef.current + 1
     window.setTimeout(() => {
@@ -88,7 +100,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
         phaseLockRef.current = false
       }
     }, 850)
-  }, [addScore, finish, phaseDuration])
+  }, [addScore, finish, phaseDuration, onCallout])
 
   // per-second countdown, resets on each phase
   useEffect(() => {
@@ -130,6 +142,8 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
       const type = types[Math.floor(Math.random() * types.length)]
       setChaos({ type, id: Date.now() })
       if (type === 'sprinkler') {
+        audio.hurt()
+        onCallout?.('sprinkler')
         if (hasPerk('hearth-shield')) {
           award(40)
           setBanner('🛡️ SHIELD BLOCK! +40')
@@ -138,6 +152,8 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
           setBanner('💦 SPRINKLER! COMBO -3')
         }
       } else if (type === 'dog') {
+        audio.dog()
+        onCallout?.('dog')
         setBanner('🐕 LOOSE DOG! TAP IT!')
       } else {
         setBanner('🍃 LEAF GUST!')
@@ -152,7 +168,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
       window.setTimeout(() => { setChaos(null); setBanner(null) }, 2800)
     }, 5000)
     return () => clearInterval(id)
-  }, [phaseIndex, hasPerk, award, bumpCombo])
+  }, [phaseIndex, hasPerk, award, bumpCombo, onCallout])
 
   // ---- interactions ----
   // Handlers read/write objectsRef synchronously so rapid clicks in the same
@@ -177,6 +193,8 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
       if (p) p.found = true
     })
     commit({ ...cur, bushes, poops })
+    audio.tap()
+    if (!foundOnce.current) { foundOnce.current = true; onCallout?.('found') }
     award(5 * chosen.length, chosen.length)
     if (bushes.every((b) => b.found)) advancePhase()
   }
@@ -186,6 +204,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
     const cur = objectsRef.current
     const poops = cur.poops.map((p) => (p.id === id ? { ...p, scooped: true } : p))
     commit({ ...cur, poops })
+    audio.scoop()
     award(hasPerk('golden-scoop') ? 40 : 20, 1)
     const found = poops.filter((p) => p.found)
     if (found.length && found.every((p) => p.scooped)) advancePhase()
@@ -201,6 +220,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
     const chosen = [clicked, ...extras].filter(Boolean).slice(0, targets)
     chosen.forEach((s) => { s.mowed = true })
     commit({ ...cur, strips })
+    audio.tap()
     award(15 * chosen.length, chosen.length)
     if (strips.every((s) => s.mowed)) advancePhase()
   }
@@ -215,12 +235,14 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
     const chosen = [clicked, ...extras].filter(Boolean).slice(0, targets)
     chosen.forEach((l) => { l.raked = true })
     commit({ ...cur, leaves })
+    audio.tap()
     award(15 * chosen.length, chosen.length)
     if (leaves.every((l) => l.raked)) advancePhase()
   }
 
   const onChaosDog = () => {
     if (!chaos || chaos.type !== 'dog') return
+    audio.dog()
     award(30, 2)
     setChaos(null)
     setBanner('🎉 GOOD DOG! +30')

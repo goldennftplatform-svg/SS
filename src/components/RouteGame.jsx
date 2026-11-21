@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { characterById } from '../game/engine.js'
 import CharacterSprite from './CharacterSprite.jsx'
+import { audio } from '../audio/chiptune.js'
 
 const ROAD_LENGTH = 100
 const PILES = Array.from({ length: 14 }, (_, i) => ({
@@ -16,7 +17,7 @@ const HAZARDS = [
 ]
 const FRIENDLY_DOG_AT = [34, 70]
 
-export default function RouteGame({ market, characterId, urgency, upgrades, onFinish, onQuit }) {
+export default function RouteGame({ market, characterId, urgency, upgrades, onFinish, onQuit, onCallout }) {
   const char = characterById(characterId)
   const bikeLevel = upgrades.bike || 0
   const scoopLevel = upgrades.scoop || 0
@@ -36,6 +37,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
   const bumpRef = useRef(false)
   const frameRef = useRef(null)
   const lastRef = useRef(0)
+  const tierRef = useRef(0)
 
   const scoopRadius = 4.2 + scoopLevel * 0.8 + (char.perkEffect.scoopRadius ? 3 : 0)
 
@@ -113,8 +115,16 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
       const ids = near.map((n) => n.id)
       clearedRef.current = [...clearedRef.current, ...ids]
       setCleared(clearedRef.current)
-      setCombo((c) => c + ids.length)
+      audio.scoop()
+      setCombo((c) => {
+        const next = c + ids.length
+        if (next >= 20 && tierRef.current < 3) { tierRef.current = 3; audio.combo(3); onCallout?.('legend') }
+        else if (next >= 10 && tierRef.current < 2) { tierRef.current = 2; audio.combo(2); onCallout?.('storm') }
+        else if (next >= 5 && tierRef.current < 1) { tierRef.current = 1; audio.combo(1); onCallout?.('hotStreak') }
+        return next
+      })
     } else {
+      audio.tap()
       setCombo((c) => Math.max(0, c - 1))
     }
   }
@@ -123,6 +133,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
     if (done) return
     const p = posRef.current
     if (FRIENDLY_DOG_AT.some((at) => Math.abs(at - p) < 7) && !waved.includes(Math.floor(p / 10))) {
+      audio.dog()
       setWaved((w) => [...w, Math.floor(p / 10)])
       setCombo((c) => c + (char.perkEffect.waveTips ? 4 : 2))
     }
@@ -134,6 +145,8 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
       if (h.lane === lane && Math.abs(h.at - pos) < 2.2 && !bumpRef.current) {
         bumpRef.current = true
         setBump(true)
+        audio.hurt()
+        onCallout?.('sprinkler')
         setCombo((c) => Math.max(0, c - 3))
       }
     })

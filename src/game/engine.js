@@ -2,6 +2,7 @@
 // wallet providers, etc.) can reuse it later.
 
 import { CHARACTERS, SERVICES, XP_PER_LEVEL, pickPerkChoices } from '../data/gameData.js'
+import { open } from './region.js'
 
 const SAVE_KEY = 'scuph-safari-save-v1'
 
@@ -22,6 +23,9 @@ export const defaultSave = () => ({
   totalStars: 0,
   franchiseRevenue: 0,
   storySeen: [],
+  dialogueSeen: [],
+  eventLog: [],
+  contract: null,
 })
 
 export function loadSave() {
@@ -117,6 +121,46 @@ export function applyRewards(save, rewards) {
     next.levelUpFlash = true
   }
   return next
+}
+
+// A rotating contract gives every job a reason to exist beyond the map grind.
+export function makeContract(save, cities) {
+  const available = cities.filter((c) => open(save, c.id))
+  const pool = available.length ? available : cities.slice(0, 1)
+  const city = pool[Math.floor(Math.random() * pool.length)]
+  const goals = { yard: 4, route: 5, urgent: 3 }
+  const rewards = { yard: 35, route: 45, urgent: 60 }
+  return {
+    city: city.id,
+    type: city.special,
+    goal: goals[city.special] || 4,
+    progress: 0,
+    reward: rewards[city.special] || 35,
+    label: city.special === 'yard' ? 'Yard Refreshes' : city.special === 'urgent' ? 'Rush cleanups' : 'Bike routes',
+  }
+}
+
+export function updateContract(save, cities, result) {
+  const contract = save.contract || makeContract(save, cities)
+  const matches = contract.city === result.city && (contract.type === result.type || contract.type === result.jobType)
+  if (!matches) return { save: { ...save, contract }, completed: false }
+  const progress = Math.min(contract.goal, contract.progress + Math.max(1, result.stars))
+  const done = progress >= contract.goal
+  const next = {
+    ...save,
+    contract: done ? makeContract({ ...save, coins: save.coins + contract.reward }, cities) : { ...contract, progress },
+    coins: save.coins + (done ? contract.reward : 0),
+  }
+  return { save: next, completed: done, reward: done ? contract.reward : 0, label: contract.label }
+}
+
+export function logEvent(save, text) {
+  return { ...save, eventLog: [{ text, at: Date.now() }, ...(save.eventLog || [])].slice(0, 6) }
+}
+
+export function markDialogue(save, key) {
+  if (save.dialogueSeen?.includes(key)) return save
+  return { ...save, dialogueSeen: [...(save.dialogueSeen || []), key] }
 }
 
 export function buyUpgrade(save, upgradeId, upgradeDef) {

@@ -15,6 +15,7 @@ export default function Results({ rewards, save, leveledUp, onContinue }) {
           <div><span>✨</span><strong>+{xp}</strong><small>XP</small></div>
           <div><span>🌟</span><strong>{repDelta >= 0 ? '+' : ''}{repDelta.toFixed(1)}</strong><small>Reputation</small></div>
           <div><span>🦴</span><strong>+{bones}</strong><small>Bones</small></div>
+          {rewards.contractBonus > 0 && <div className="contract-bonus"><span>📋</span><strong>+{rewards.contractBonus}</strong><small>Contract</small></div>}
         </div>
         <div className="revenue-line">Franchise revenue: <strong>${save.franchiseRevenue}</strong> total</div>
         {leveledUp && <div className="level-up-banner">🎉 LEVEL UP! You're now Level {save.level} — new crew & services unlocked!</div>}
