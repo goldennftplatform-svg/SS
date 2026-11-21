@@ -1,5 +1,7 @@
 # 🟢 SCUPH SAFARI
 
+**[Play or install on your phone](https://goldennftplatform-svg.github.io/SS/).** In iPhone/iPad Safari use Share → Add to Home Screen. In Android Chrome use **Install game** or the browser menu → Install app. After the first online load finishes caching, the installed game can launch offline. Saves stay local to the browser/app.
+
 **Current campaign: South Sound takeover.** Start on the interactive 20-city atlas. Dispatch a job in Maple Valley, win regular customers and establish your first branch. Each flag opens neighboring markets and pays six coins on future jobs. Choose your road to Olympia, reinvest spare coins in local flyers, or build out every district. The atlas is a schematic inspired by western Washington, not a navigation map. Open `release/SCUPH-SAFARI.html` for the standalone build.
 
 > **Making the world cleaner, one scoop at a time.**

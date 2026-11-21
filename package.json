@@ -6,7 +6,7 @@
   "description": "SCUPH SAFARI - Paperboy meets poop-scooping service empire builder",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build && node scripts/pack-offline.mjs",
+    "build": "vite build && node scripts/build-worker.mjs && node scripts/pack-offline.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {

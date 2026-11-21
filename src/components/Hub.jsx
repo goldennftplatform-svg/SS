@@ -13,7 +13,7 @@ export default function Hub({ save, onMap, onBuyUpgrade, onSelectCharacter, onRe
     <div className="screen hub-screen">
       <header className="hud">
         <div className="hud-brand">
-          <img src="/assets/brand/scuph-logo.png" width="54" height="30" alt="Scūph" />
+          <img src="./assets/brand/scuph-logo.png" width="54" height="30" alt="Scūph" />
           <span>SCUPH SAFARI</span>
         </div>
         <div className="hud-stats">

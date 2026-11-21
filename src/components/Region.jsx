@@ -2,6 +2,7 @@ import React,{useRef,useState} from 'react'
 import {cities,roads,count,open,owned,neighbors,dividend,flyerCost} from '../game/region.js'
 import './region.css'
 import colors from '../data/palette.json'
+import Install from './Install.jsx'
 
 const missions={yard:'Yard refresh',route:'Bike route',urgent:'Rush cleanup'}
 // Bisect the atlas between towns to draw adjoining claimable districts.
@@ -19,7 +20,7 @@ export default function Region({save,id,select,onJob,onFlyer,onHQ}){
   const branches=cities.filter(n=>owned(save,n.id))
   function locate(n){select(n.id);const el=box.current;if(el)el.scrollTo({left:el.scrollWidth*n.x/1040-el.clientWidth/2,top:el.scrollHeight*n.y/646-el.clientHeight/2,behavior:'smooth'})}
   React.useEffect(()=>{const el=box.current;if(el){el.scrollLeft=el.scrollWidth*c.x/1040-el.clientWidth/2;el.scrollTop=el.scrollHeight*c.y/646-el.clientHeight/2}},[zoom])
-  return <main className="atlas" style={Object.fromEntries(Object.entries(colors).map(([k,v])=>[`--${k}`,v]))}><header><div><small><span className="brand-pip"/> SCŪPH SAFARI　 /　 CAMPAIGN 01</small><h1>South Sound <em>takeover.</em></h1></div><button onClick={onHQ}>Crew & HQ ↗</button></header>
+  return <main className="atlas" style={Object.fromEntries(Object.entries(colors).map(([k,v])=>[`--${k}`,v]))}><header><div><small><span className="brand-pip"/> SCŪPH SAFARI　 /　 CAMPAIGN 01</small><h1>South Sound <em>takeover.</em></h1></div><div className="atlas-actions"><Install/><button onClick={onHQ}>Crew & HQ ↗</button></div></header>
     <section className="atlas-layout"><div className="map-shell"><div className="map-tools"><b>WASHINGTON　·　FIELD ATLAS</b><button aria-label="Zoom out" disabled={zoom<=1} onClick={()=>setZoom(zoom-.5)}>−</button><button aria-label="Zoom in" disabled={zoom>=2} onClick={()=>setZoom(zoom+.5)}>+</button></div>
     <div className="map-scroll" ref={box}><svg viewBox="0 0 1040 646" style={{width:`${zoom*100}%`,minWidth:740*zoom}} aria-label="Interactive South Sound territory map">
     <defs><pattern id="pines" width="34" height="28" patternUnits="userSpaceOnUse"><path d="m8 16 5-8 5 8m-8-1 3-4 2 3" fill="none" stroke="var(--mist)" opacity=".25"/></pattern>
