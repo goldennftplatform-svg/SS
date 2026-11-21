@@ -35,34 +35,29 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
   const laneRef = useRef(1)
   const clearedRef = useRef([])
   const bumpRef = useRef(false)
-  const frameRef = useRef(null)
-  const lastRef = useRef(0)
   const tierRef = useRef(0)
 
   const scoopRadius = 4.2 + scoopLevel * 0.8 + (char.perkEffect.scoopRadius ? 3 : 0)
 
-  const finish = useCallback((performance) => {
+  const finish = useCallback((performance, late = false) => {
     if (done) return
     setDone(true)
-    onFinish({ performance: Math.max(0, Math.min(1, performance)), urgency, character: char })
+    onFinish({ performance: Math.max(0, Math.min(1, performance)), urgency, character: char, late })
   }, [done, onFinish, urgency, char])
 
   // main ride loop
   useEffect(() => {
     if (done) return
-    let raf
-    const tick = (t) => {
-      if (!lastRef.current) lastRef.current = t
-      const dt = Math.min(0.05, (t - lastRef.current) / 1000)
-      lastRef.current = t
+    let last = performance.now()
+    const tick = () => {
+      const now = performance.now()
+      const dt = Math.min(0.05, (now - last) / 1000); last = now
       const finalBoost = posRef.current > 82 && char.perkEffect.finalSpeed ? char.perkEffect.finalSpeed : 1
       const next = Math.min(ROAD_LENGTH, posRef.current + baseSpeed * finalBoost * dt * 12)
       posRef.current = next
       setPos(next)
 
-      if (bumpRef.current) {
-        if (Math.random() < 0.1) { bumpRef.current = false; setBump(false) }
-      }
+      if (bumpRef.current && Math.random() < 0.1) { bumpRef.current = false; setBump(false) }
 
       if (next >= ROAD_LENGTH) {
         const total = PILES.length
@@ -70,12 +65,10 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
         const timeRatio = timeLeft / (urgency ? 30 : 42)
         const performance = cleanRatio * 0.65 + timeRatio * 0.25 + Math.min(1, combo / 12) * 0.1
         finish(performance)
-        return
       }
-      raf = requestAnimationFrame(tick)
     }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    const id = setInterval(tick, 16)
+    return () => clearInterval(id)
   }, [done, baseSpeed, timeLeft, combo, urgency, finish, char])
 
   // countdown
@@ -83,7 +76,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
     if (done) return
     const id = setInterval(() => {
       setTimeLeft((t) => {
-        if (t <= 1) { finish(0); return 0 }
+        if (t <= 1) { finish(0, true); return 0 }
         return t - 1
       })
     }, 1000)

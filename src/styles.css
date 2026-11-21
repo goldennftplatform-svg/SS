@@ -419,6 +419,65 @@ button { font-family: inherit; cursor: pointer; }
 .perk-chip { background: var(--green-2); color: #fff; border-radius: 10px; padding: 3px 8px; font-size: 9px; font-weight: 900; text-transform: capitalize; }
 .no-perks { font-size: 9px; font-weight: 800; color: #8a7a60; }
 
+/* ---------- action yard: moving knight + departure clock ---------- */
+.yard-job.action .yard-hud { gap: 8px; }
+.yard-timer-label { font: 900 10px ui-monospace, monospace; color: var(--green-2); letter-spacing: .08em; }
+.timer {
+  background: var(--green-2); color: #fff; border: 2px solid var(--ink); border-radius: 10px;
+  padding: 5px 10px; font-weight: 900; font-size: 14px; min-width: 68px; text-align: center;
+}
+.timer.low { background: var(--coral); animation: pulse .5s infinite; }
+.departure-bar {
+  position: relative; height: 18px; background: #1d3328; border-bottom: 3px solid var(--ink); overflow: hidden;
+}
+.departure-bar i {
+  display: block; height: 100%; background: repeating-linear-gradient(90deg, #9bd45f 0 14px, #85c24f 14px 28px);
+  transition: width .35s linear;
+}
+.departure-bar span {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font: 900 10px ui-monospace, monospace; letter-spacing: .1em; color: #fff; text-shadow: 1px 1px 0 #000;
+}
+.yard-job.urgent .departure-bar i { background: repeating-linear-gradient(90deg, #ff6b5e 0 14px, #ff9d5c 14px 28px); }
+.yard-job.urgent .yard-arena { box-shadow: inset 0 0 50px rgba(255,80,70,.45); }
+.yard-target-field { position: absolute; inset: calc(42% + 18px) 8px 8px; z-index: 4; }
+.yard-obj { pointer-events: none; }
+.yard-obj.bush { pointer-events: auto; cursor: default; }
+.yard-obj.bush:hover { transform: translate(-50%, -50%); }
+
+.yard-player {
+  position: absolute; z-index: 6; width: clamp(46px, 7vw, 70px); height: clamp(46px, 7vw, 70px);
+  transform: translate(-50%, -50%); pointer-events: none;
+  filter: drop-shadow(0 5px 3px rgba(0,0,0,.35));
+}
+.yard-player .scoop-knight { width: 100%; height: 100%; }
+.yard-player::before {
+  content: ''; position: absolute; inset: 12%; border-radius: 50%;
+  background: radial-gradient(circle, var(--player-color, #D6FF69) 0 45%, transparent 46%);
+  opacity: .5; animation: bob 1.2s infinite alternate;
+}
+.yard-player.moving .scoop-knight { animation: knightRun .18s infinite alternate; }
+.yard-player.popping { animation: scoopPop .18s ease-out; }
+.yard-tool {
+  position: absolute; right: -8px; top: 4px; font-size: clamp(18px, 3vw, 28px);
+  filter: drop-shadow(1px 2px 0 rgba(0,0,0,.3)); animation: toolSwing .45s infinite alternate;
+}
+@keyframes knightRun { to { transform: translateY(-3px) rotate(3deg); } }
+@keyframes scoopPop { 50% { transform: translate(-50%, -50%) scale(1.25); } }
+@keyframes toolSwing { to { transform: rotate(-22deg) translateY(-2px); } }
+
+.yard-dpad {
+  position: absolute; right: 10px; bottom: 58px; z-index: 12; display: grid; gap: 3px; justify-items: center;
+  opacity: .85; touch-action: none;
+}
+.yard-dpad div { display: flex; gap: 3px; }
+.yard-dpad button {
+  width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--ink); background: var(--cream);
+  color: var(--green-2); font-size: 15px; font-weight: 900; box-shadow: 0 3px 0 var(--ink); touch-action: none;
+}
+.yard-dpad button:active { transform: translateY(3px); box-shadow: none; background: var(--gold); }
+@media (max-width: 700px) { .yard-dpad { bottom: 52px; right: 6px; } .yard-dpad button { width: 36px; height: 36px; } }
+
 /* ---------- perk cards ---------- */
 .perk-screen { background: radial-gradient(circle at 50% 15%, #ffe6a0, #d98a4b 60%, #a94e3a); }
 .perk-bg-stars { position: absolute; inset: 0; font-size: 40px; color: rgba(255,255,255,.14); text-align: center; padding-top: 6%; letter-spacing: 60px; animation: spin 80s linear infinite; }

@@ -114,10 +114,10 @@ export const XP_PER_LEVEL = (level) => 100 + (level - 1) * 60
 
 // Yard Job phases - a full customer visit, not just a drive-by scoop.
 export const YARD_PHASES = [
-  { id: 'find', label: 'FIND', icon: '🔍', hint: 'Tap bushes to uncover hidden piles!', duration: 14 },
-  { id: 'scoop', label: 'SCOOP', icon: '🧹', hint: 'Tap piles to scoop. Chain combos!', duration: 14 },
-  { id: 'mow', label: 'MOW', icon: '🚜', hint: 'Tap grass strips for a clean cut!', duration: 14 },
-  { id: 'rake', label: 'RAKE', icon: '🍂', hint: 'Rake leaves into tidy piles!', duration: 14 },
+  { id: 'find', label: 'FIND', icon: '🔍', hint: 'Ride into bushes to uncover hidden piles!', duration: 14 },
+  { id: 'scoop', label: 'SCOOP', icon: '🧹', hint: 'Scoop piles on contact. Chain combos!', duration: 14 },
+  { id: 'mow', label: 'MOW', icon: '🚜', hint: 'Mow grass strips by riding through them!', duration: 14 },
+  { id: 'rake', label: 'RAKE', icon: '🍂', hint: 'Rake leaves into tidy piles before departure!', duration: 14 },
 ]
 
 // Roguelite level-up rewards. Pick 1 of 3 after every level up.

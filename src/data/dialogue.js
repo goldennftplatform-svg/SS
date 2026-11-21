@@ -41,6 +41,9 @@ export const SCRIPTS = {
   dog: [L('customer', 'Loose dog! Quick, give them a wave!')],
   found: [L('scoops', 'Found you. No pile escapes the visor.')],
   phase: [L('dispatch', 'Phase clear. Advance to the next station!')],
+  gust: [L('mascot', 'WIND! I did not consent to be airborne!')],
+  onTime: [L('dispatch', 'Departure made! The next client is already waiting.')],
+  late: [L('dispatch', 'You missed the departure! The client cancelled and the referral is gone.')],
   perfect: [
     L('customer', 'Spotless. Absolutely spotless. Did you polishthe grass too?'),
     L('scoops', 'Only the grass that required it, madam.'),

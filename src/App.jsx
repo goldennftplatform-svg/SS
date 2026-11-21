@@ -84,10 +84,17 @@ export default function App() {
 
   const completeJob = (result, scorer) => {
     const rewards = scorer(result)
+    const late = !!result.late
+    if (late) {
+      rewards.coins = Math.round(rewards.coins * 0.5)
+      rewards.xp = Math.round(rewards.xp * 0.6)
+      rewards.repDelta = -0.3
+      rewards.late = true
+    }
     const id = jobConfig.city
     const market = cities[id]
     const bonus = dividend(save)
-    const streakBonus = (save.streak || 1) >= 3 ? 15 : 0
+    const streakBonus = !late && (save.streak || 1) >= 3 ? 15 : 0
     rewards.coins += bonus + streakBonus
 
     const contract = updateContract(save, cities, {
@@ -96,14 +103,16 @@ export default function App() {
     rewards.contractBonus = contract.reward || 0
     rewards.contractLabel = contract.label
 
-    const quality = result.performance >= 0.3
+    const quality = !late && result.performance >= 0.3
     let next = expand(applyRewards(contract.save, rewards), id, quality ? rewards.stars + Number(market.special === jobConfig.type) : 0)
+    // Missing the departure window costs a regular, not just a worse grade.
+    if (late) next = { ...next, territories: { ...next.territories, [id]: Math.max(0, count(next, id) - 1) } }
     next.lastCity = id
-    next.streak = rewards.stars >= 2 ? (save.streak || 1) + 1 : 1
+    next.streak = !late && rewards.stars >= 2 ? (save.streak || 1) + 1 : 1
     const won = !owned(save, id) && owned(next, id)
     const newMarkets = neighbors(id).filter((i) => !open(save, i) && open(next, i)).map((i) => cities[i].name)
-    rewards.dispatch = `${market.name}: +${count(next, id) - count(save, id)} regulars. ${won ? (id === 19 ? 'Olympia secured! Campaign won. ' : 'Branch established! ') : ''}${newMarkets.length ? 'Roads opened: ' + newMarkets.join(', ') + '. ' : ''}${bonus ? 'Network dividend: +' + bonus + ' coins. ' : ''}${streakBonus ? 'Streak bonus: +' + streakBonus + ' coins. ' : ''}${!quality ? ' More completed work earns referrals.' : ''}`
-    next = logEvent(next, `${won ? '🏁' : '🧹'} ${market.name} ${jobConfig.type} · ${rewards.stars}★ · +${rewards.coins}🪙`)
+    rewards.dispatch = `${market.name}: +${count(next, id) - count(save, id)} regulars. ${won ? (id === 19 ? 'Olympia secured! Campaign won. ' : 'Branch established! ') : ''}${newMarkets.length ? 'Roads opened: ' + newMarkets.join(', ') + '. ' : ''}${bonus ? 'Network dividend: +' + bonus + ' coins. ' : ''}${streakBonus ? 'Streak bonus: +' + streakBonus + ' coins. ' : ''}${late ? ' LATE: lost a regular, half pay and reputation. ' : ''}${!quality && !late ? ' More completed work earns referrals.' : ''}`
+    next = logEvent(next, `${late ? '⏰' : won ? '🏁' : '🧹'} ${market.name} ${jobConfig.type} · ${rewards.stars}★ · +${rewards.coins}🪙${late ? ' · LATE' : ''}`)
 
     const didLevel = next.level > save.level
     setLeveledUp(didLevel)
@@ -115,7 +124,7 @@ export default function App() {
 
     const reaction = rewards.stars === 3 ? 'perfect' : rewards.stars === 2 ? 'good' : 'rough'
     const lines = [
-      ...buildLines(reaction, { city: market.name }),
+      ...(late ? buildLines('late', { city: market.name }) : buildLines(reaction, { city: market.name })),
       ...(won ? buildLines(id === 19 ? 'olympia' : 'branch', { city: market.name }) : []),
       ...(contract.completed ? buildLines('contract', { goal: contract.label, reward: contract.reward }) : []),
     ]

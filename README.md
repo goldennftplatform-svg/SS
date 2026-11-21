@@ -2,7 +2,7 @@
 
 **[Play or install on your phone](https://goldennftplatform-svg.github.io/SS/).** In iPhone/iPad Safari use Share → Add to Home Screen. In Android Chrome use **Install game** or the browser menu → Install app. After the first online load finishes caching, the installed game can launch offline. Saves stay local to the browser/app.
 
-**New in this build:** a full in-game dialogue cast (intro, dispatch, combo callouts, customer reactions, branch/level celebrations), a procedural **instrumental 8-bit soundtrack** — main map theme plus `route`, `yard` and `urgent` loops, with extra layers unlocking at levels 3 and 5 — generated at the reference track's ~112 BPM in E♭ minor. No vocals, no samples, no downloads. Tap-to-advance dialogue blips, scoop/coin/fanfare SFX, and a mute button are included. The map now has a campaign tracker, daily contract, next-unlock meter, activity log, animated flags/paws/sparkles and per-town customer progress rings. Streaks of 3+ clean jobs pay a bonus.
+**New in this build:** a full in-game dialogue cast (intro, dispatch, combo callouts, customer reactions, branch/level celebrations), a procedural **instrumental 8-bit soundtrack** — main map theme plus `route`, `yard` and `urgent` loops, with extra layers unlocking at levels 3 and 5 — generated at the reference track's ~112 BPM in E♭ minor. No vocals, no samples, no downloads. Tap-to-advance dialogue blips, scoop/coin/fanfare SFX, and a mute button are included. The map now has a campaign tracker, daily contract, next-unlock meter, activity log, animated flags/paws/sparkles and per-town customer progress rings. Streaks of 3+ clean jobs pay a bonus. Yard Jobs are now real action sprints: the knight moves and collects on contact while a departure clock threatens your pay, reputation and regulars.
 
 **Current campaign: South Sound takeover.** Start on the interactive 20-city atlas. Dispatch a job in Maple Valley, win regular customers and establish your first branch. Each flag opens neighboring markets and pays six coins on future jobs. Choose your road to Olympia, reinvest spare coins in local flyers, or build out every district. The atlas is a schematic inspired by western Washington, not a navigation map. Open `release/SCUPH-SAFARI.html` for the standalone build.
 
@@ -37,7 +37,7 @@ No backend, no accounts, no wallet needed to play. Progress saves in `localStora
 - **Title → HQ hub → Route → Results → Upgrade** full loop
 - **Playable route:** ride a 3-lane street, steer with ←/→ or A/D, press **SPACE** to scoop, **W** to wave at friendly dogs, dodge sprinklers and grumpy dogs, reach the finish line before the timer
 - **Urgent route variant:** "Emergency Poop Cleanup" — 2× rewards, tighter timer
-- **🏡 Yard Job — Full Visit:** show up and do it all in four quick phases — **Find** hidden piles → **Scoop** with combos → **Mow** the grass → **Rake** the leaves. Random chaos (sprinklers, loose dogs, leaf gusts), escalating combo tiers (`HOT STREAK` → `SCUPH STORM` → `LEGENDARY SCŪPHR`), and bigger rewards.
+- **🏡 Yard Job — Action Sprint:** your knight actually rides around the lawn (WASD/arrows or the touch pad) and **collects on contact**. Four phases — **Find** hidden piles → **Scoop** with combos → **Mow** the grass → **Rake** the leaves — all against the next job's **departure clock**. Random chaos (sprinklers, loose dogs, leaf gusts), escalating combo tiers (`HOT STREAK` → `SCUPH STORM` → `LEGENDARY SCŪPHR`), and bigger rewards. Miss the clock and you are **late**: half pay, lost reputation and a lost regular.
 - **Roguelite perk cards:** every level-up offers 3 of 8 perks (Magnet Bag, Turbo Mower, Leaf Blower 3000, Golden Scoop, Super Sniffer, Hearth Shield, Rally Timer, Combo Keeper). **Earned, never bought.**
 - **6 characters** with unique perks and unlock levels (Sir Scoops-a-Lot, Hopscotch Hound, Duchess Litterly, Sir Wags-a-Lot, Sir Hearthguard, Captain Sunbeam)
 - **The Upsell Tree:** all 6 real SCUPH services with real prices, unlocked as your reputation grows
@@ -58,9 +58,9 @@ See [`docs/GDD.md`](docs/GDD.md) for the full design.
 | Wave at dog | W / ↑ | WAVE button |
 | Pause / quit | HQ button | HQ button |
 
-**Yard Job:** just tap the bushes, piles, grass strips, and leaves as each phase appears. Tap the loose dog when it runs by for bonus points.
+**Yard Job:** move with **WASD / arrows** (or the on-screen D-pad). Sir Scoops-a-Lot scoops, mows and rakes automatically when he reaches a target. Watch the departure bar — finish the whole visit before it empties or the client cancels. Tap the loose dog when it runs by for bonus points.
 
-Route score = cleanliness (65%) + time left (25%) + combo (10%). 3 stars = best rewards + a bone. Yard Jobs score higher and award up to 2 bones.
+Route score = cleanliness (65%) + time left (25%) + combo (10%). 3 stars = best rewards + a bone. Yard Jobs score higher and award up to 2 bones. A missed departure halves pay, costs reputation and removes a regular.
 
 ---
 
