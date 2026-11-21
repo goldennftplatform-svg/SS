@@ -10,7 +10,16 @@ window.addEventListener('pointerdown', wake, { once: true })
 window.addEventListener('keydown', wake, { once: true })
 
 if(import.meta.env.PROD && /^https?:$/.test(location.protocol) && 'serviceWorker' in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.warn))
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').then(async (reg) => {
+      // Check immediately and hourly so a new deploy replaces the cached build.
+      await reg.update().catch(() => {})
+      setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000)
+    }).catch(console.warn)
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data?.type === 'scuph-update') location.reload()
+    })
+  })
 }
 
 createRoot(document.getElementById('root')).render(

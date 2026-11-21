@@ -10,8 +10,22 @@ await writeFile('dist/sw.js',`
 const prefix='scuph-safari:'+self.registration.scope+':'
 const cache=prefix+'${hash.digest('hex').slice(0,16)}'
 const urls=${JSON.stringify(files)}
-self.addEventListener('install',e=>e.waitUntil(caches.open(cache).then(c=>c.addAll(urls))))
-self.addEventListener('activate',e=>e.waitUntil((async()=>{for(const k of await caches.keys())if(k.startsWith(prefix)&&k!==cache)await caches.delete(k);await self.clients.claim()})()))
+self.addEventListener('install',e=>e.waitUntil((async()=>{
+  const c=await caches.open(cache)
+  await c.addAll(urls)
+  await self.skipWaiting()
+})()))
+self.addEventListener('activate',e=>e.waitUntil((async()=>{
+  const keys=await caches.keys()
+  const hadOld=keys.some(k=>k.startsWith(prefix)&&k!==cache)
+  for(const k of keys)if(k.startsWith(prefix)&&k!==cache)await caches.delete(k)
+  await self.clients.claim()
+  if(hadOld){
+    const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true})
+    for(const client of clients)client.postMessage({type:'scuph-update'})
+  }
+})()))
+self.addEventListener('message',e=>{if(e.data?.type==='scuph-update-check')e.waitUntil(self.registration.update())})
 self.addEventListener('fetch',e=>{
  if(e.request.method!=='GET'||!e.request.url.startsWith(self.registration.scope))return
  e.respondWith((async()=>{const c=await caches.open(cache);return await c.match(e.request.mode==='navigate'?'./index.html':e.request)||fetch(e.request)})())
