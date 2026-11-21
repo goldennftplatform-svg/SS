@@ -1,0 +1,135 @@
+// Pure game logic. Kept free of React so platform adapters (Hopcity netcode,
+// wallet providers, etc.) can reuse it later.
+
+import { CHARACTERS, SERVICES, XP_PER_LEVEL, pickPerkChoices } from '../data/gameData.js'
+
+const SAVE_KEY = 'scuph-safari-save-v1'
+
+export const defaultSave = () => ({
+  coins: 120,
+  bones: 0,
+  xp: 0,
+  level: 1,
+  reputation: 3.0,
+  streak: 1,
+  unlockedCharacters: ['sir-scoops'],
+  activeCharacter: 'sir-scoops',
+  unlockedServices: ['waste-removal'],
+  upgrades: { bike: 0, scoop: 0, bag: 0, crew: 1, service: 0 },
+  perks: [],
+  routesCompleted: 0,
+  yardJobsCompleted: 0,
+  totalStars: 0,
+  franchiseRevenue: 0,
+  storySeen: [],
+})
+
+export function loadSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY)
+    if (!raw) return defaultSave()
+    const parsed = JSON.parse(raw)
+    return { ...defaultSave(), ...parsed, upgrades: { ...defaultSave().upgrades, ...(parsed.upgrades || {}) } }
+  } catch {
+    return defaultSave()
+  }
+}
+
+export function persistSave(save) {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(save))
+  } catch {
+    /* storage disabled - game still works in memory */
+  }
+}
+
+export function characterById(id) {
+  return CHARACTERS.find((c) => c.id === id) || CHARACTERS[0]
+}
+
+export function serviceById(id) {
+  return SERVICES.find((s) => s.id === id) || SERVICES[0]
+}
+
+export function upgradeCost(upgrade, currentLevel) {
+  return Math.round(upgrade.baseCost * Math.pow(1.6, currentLevel))
+}
+
+export function progressToNextLevel(xp, level) {
+  const need = XP_PER_LEVEL(level)
+  return { current: xp, need, pct: Math.min(100, (xp / need) * 100) }
+}
+
+// Score a finished route. `performance` is 0..1 (cleanliness + speed + combo).
+export function scoreRoute({ performance, urgency = false, character }) {
+  const stars = performance >= 0.9 ? 3 : performance >= 0.65 ? 2 : 1
+  const baseCoins = Math.round(40 + performance * 60)
+  const coinMult = urgency ? 2 : 1
+  const coins = Math.round(baseCoins * coinMult + (character?.perkEffect?.waveTips ? 10 : 0))
+  const xp = Math.round(35 + performance * 45)
+  const bones = stars === 3 ? 1 : 0
+  const repDelta = (stars - 2) * 0.1
+  const revenue = urgency ? 90 : Math.round(40 + performance * 40)
+  return { stars, coins, xp, bones, repDelta, revenue }
+}
+
+// Score a full yard job (find + scoop + mow + rake). More valuable than a
+// drive-by route because the customer trusts you with more of their yard.
+export function scoreYardJob({ performance, character, perks = [] }) {
+  const stars = performance >= 0.9 ? 3 : performance >= 0.65 ? 2 : 1
+  const perkBonus = perks.length * 0.08
+  const coins = Math.round((55 + performance * 75) * (1 + perkBonus))
+  const xp = Math.round(50 + performance * 60)
+  const bones = stars === 3 ? 2 : stars === 2 ? 1 : 0
+  const repDelta = (stars - 2) * 0.15
+  const revenue = Math.round(65 + performance * 85)
+  return { stars, coins, xp, bones, repDelta, revenue, yard: true }
+}
+
+export function grantPerk(save, perkId) {
+  if (!perkId || save.perks.includes(perkId)) return save
+  return { ...save, perks: [...save.perks, perkId], perkChoices: [] }
+}
+
+export function rollPerkChoices(save) {
+  return pickPerkChoices(save.perks || [], 3)
+}
+
+export function applyRewards(save, rewards) {
+  const next = { ...save, upgrades: { ...save.upgrades } }
+  next.coins += rewards.coins
+  next.bones += rewards.bones
+  next.xp += rewards.xp
+  next.totalStars += rewards.stars
+  next.routesCompleted += 1
+  if (rewards.yard) next.yardJobsCompleted = (next.yardJobsCompleted || 0) + 1
+  next.franchiseRevenue += rewards.revenue
+  next.reputation = Math.max(0, Math.min(5, +(next.reputation + rewards.repDelta).toFixed(2)))
+
+  const need = XP_PER_LEVEL(next.level)
+  if (next.xp >= need) {
+    next.xp -= need
+    next.level += 1
+    const newlyUnlocked = CHARACTERS.filter((c) => c.unlockLevel === next.level).map((c) => c.id)
+    next.unlockedCharacters = [...new Set([...next.unlockedCharacters, ...newlyUnlocked])]
+    const newServices = SERVICES.filter((s) => s.unlockLevel === next.level).map((s) => s.id)
+    next.unlockedServices = [...new Set([...next.unlockedServices, ...newServices])]
+    next.levelUpFlash = true
+  }
+  return next
+}
+
+export function buyUpgrade(save, upgradeId, upgradeDef) {
+  const level = save.upgrades[upgradeId] || 0
+  if (level >= upgradeDef.max) return { save, ok: false, reason: 'maxed' }
+  const cost = upgradeCost(upgradeDef, level)
+  if (save.coins < cost) return { save, ok: false, reason: 'coins' }
+  return {
+    ok: true,
+    save: {
+      ...save,
+      coins: save.coins - cost,
+      upgrades: { ...save.upgrades, [upgradeId]: level + 1 },
+    },
+  }
+}

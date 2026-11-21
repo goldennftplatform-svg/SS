@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.*
+*.log
+
+# Local mood board and exploratory crops; not shipped game assets.
+/public/assets/brand/*
+!/public/assets/brand/scuph-logo.png
+/public/assets/characters/*.webp
+/public/assets/ART-MANIFEST.md
