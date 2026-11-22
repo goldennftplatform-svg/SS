@@ -37,8 +37,8 @@ No backend, no accounts, no wallet needed to play. Progress saves in `localStora
 - **Title → HQ hub → Route → Results → Upgrade** full loop
 - **Playable route:** ride a 3-lane street, steer with ←/→ or A/D, press **SPACE** to scoop, **W** to wave at friendly dogs, dodge sprinklers and grumpy dogs, reach the finish line before the timer
 - **Urgent route variant:** "Emergency Poop Cleanup" — 2× rewards, tighter timer
-- **🏡 Yard Job — Action Sprint:** your knight actually rides around the lawn (WASD/arrows or the touch pad) and **collects on contact**. Four phases — **Find** hidden piles → **Scoop** with combos → **Mow** the grass → **Rake** the leaves — all against the next job's **departure clock**. Random chaos (sprinklers, loose dogs, leaf gusts), escalating combo tiers (`HOT STREAK` → `SCUPH STORM` → `LEGENDARY SCŪPHR`), and bigger rewards. Miss the clock and you are **late**: half pay, lost reputation and a lost regular.
-- **Roguelite perk cards:** every level-up offers 3 of 8 perks (Magnet Bag, Turbo Mower, Leaf Blower 3000, Golden Scoop, Super Sniffer, Hearth Shield, Rally Timer, Combo Keeper). **Earned, never bought.**
+- **🏡 Yard Job — Action Sprint:** your knight rides the lawn (WASD/arrows or the touch pad) and **collects on contact** across four phases — **Find** hidden piles → **Scoop** them → **Mow** the grass → **Rake** the leaves. Bags hold only 3 items: ride back to the 🛻 to dump before you can keep working. The **chain** dies if you idle, miss, or get hit, so route smart and keep moving through sprinklers, loose dogs and leaf gusts. Tight tiers (`HOT STREAK` → `SCUPH STORM` → `LEGENDARY SCŪPHR`) need real skill. Miss the departure clock and you are **late**: half pay, lost reputation and a lost regular.
+- **Roguelite perk cards:** every level-up offers 3 of 8 perks (Bigger Haul, Turbo Mower, Leaf Blower 3000, Golden Scoop, Super Sniffer, Hearth Shield, Rally Timer, Combo Keeper). **Earned, never bought.**
 - **6 characters** with unique perks and unlock levels (Sir Scoops-a-Lot, Hopscotch Hound, Duchess Litterly, Sir Wags-a-Lot, Sir Hearthguard, Captain Sunbeam)
 - **The Upsell Tree:** all 6 real SCUPH services with real prices, unlocked as your reputation grows
 - **Economy:** coins, bones, XP, reputation stars, day streak, franchise revenue, Clash-style HQ upgrades
@@ -58,9 +58,9 @@ See [`docs/GDD.md`](docs/GDD.md) for the full design.
 | Wave at dog | W / ↑ | WAVE button |
 | Pause / quit | HQ button | HQ button |
 
-**Yard Job:** move with **WASD / arrows** (or the on-screen D-pad). Sir Scoops-a-Lot scoops, mows and rakes automatically when he reaches a target. Watch the departure bar — finish the whole visit before it empties or the client cancels. Tap the loose dog when it runs by for bonus points.
+**Yard Job:** move with **WASD / arrows** (or the on-screen D-pad). Work the four stations on contact, then ride back to the **🛻 DUMP** when the bag meter fills. The **🔥 chain** window is short — every hit, splash or pause breaks it. Tap a loose dog before it bites for bonus points. Watch the departure bar — finish the whole visit before it empties or the client cancels.
 
-Route score = cleanliness (65%) + time left (25%) + combo (10%). 3 stars = best rewards + a bone. Yard Jobs score higher and award up to 2 bones. A missed departure halves pay, costs reputation and removes a regular.
+**Route:** scoop only when a pile glows in your lane; a wild swing breaks the chain, and hazards cost a second. Route score rewards cleanliness, combo, dog waves and speed. Yard score rewards completion, chain and time. 3 stars = best rewards + bone(s). A missed departure halves pay, costs reputation and removes a regular.
 
 ---
 

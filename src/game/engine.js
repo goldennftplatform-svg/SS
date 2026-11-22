@@ -65,28 +65,28 @@ export function progressToNextLevel(xp, level) {
 }
 
 // Score a finished route. `performance` is 0..1 (cleanliness + speed + combo).
-export function scoreRoute({ performance, urgency = false, character }) {
-  const stars = performance >= 0.9 ? 3 : performance >= 0.65 ? 2 : 1
-  const baseCoins = Math.round(40 + performance * 60)
+export function scoreRoute({ performance, urgency = false, character, mistakes = 0 }) {
+  const stars = performance >= 0.93 ? 3 : performance >= 0.68 ? 2 : 1
+  const baseCoins = Math.round(35 + performance * 70)
   const coinMult = urgency ? 2 : 1
   const coins = Math.round(baseCoins * coinMult + (character?.perkEffect?.waveTips ? 10 : 0))
-  const xp = Math.round(35 + performance * 45)
+  const xp = Math.round(30 + performance * 55)
   const bones = stars === 3 ? 1 : 0
-  const repDelta = (stars - 2) * 0.1
-  const revenue = urgency ? 90 : Math.round(40 + performance * 40)
+  const repDelta = +((stars - 2) * 0.12 - Math.min(0.15, mistakes * 0.03)).toFixed(2)
+  const revenue = urgency ? 90 : Math.round(35 + performance * 50)
   return { stars, coins, xp, bones, repDelta, revenue }
 }
 
 // Score a full yard job (find + scoop + mow + rake). More valuable than a
 // drive-by route because the customer trusts you with more of their yard.
-export function scoreYardJob({ performance, character, perks = [] }) {
-  const stars = performance >= 0.9 ? 3 : performance >= 0.65 ? 2 : 1
-  const perkBonus = perks.length * 0.08
-  const coins = Math.round((55 + performance * 75) * (1 + perkBonus))
-  const xp = Math.round(50 + performance * 60)
+export function scoreYardJob({ performance, character, perks = [], mistakes = 0 }) {
+  const stars = performance >= 0.93 ? 3 : performance >= 0.68 ? 2 : 1
+  const perkBonus = perks.length * 0.05
+  const coins = Math.round((50 + performance * 85) * (1 + perkBonus))
+  const xp = Math.round(45 + performance * 70)
   const bones = stars === 3 ? 2 : stars === 2 ? 1 : 0
-  const repDelta = (stars - 2) * 0.15
-  const revenue = Math.round(65 + performance * 85)
+  const repDelta = +((stars - 2) * 0.15 - Math.min(0.15, mistakes * 0.03)).toFixed(2)
+  const revenue = Math.round(60 + performance * 95)
   return { stars, coins, xp, bones, repDelta, revenue, yard: true }
 }
 

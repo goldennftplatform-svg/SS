@@ -1,39 +1,52 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+﻿import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { YARD_PHASES } from '../data/gameData.js'
 import { characterById } from '../game/engine.js'
 import CharacterSprite from './CharacterSprite.jsx'
 import { audio } from '../audio/chiptune.js'
 
-const BUSHES = 6, STRIPS = 8, LEAVES = 8
-const MAX_SCORE = BUSHES * 5 + BUSHES * 20 + STRIPS * 15 + LEAVES * 15 + 150
-const PICKUP_RADIUS = 8
+const BUSHES = 5, STRIPS = 6, LEAVES = 6
+const TARGETS = BUSHES + BUSHES + STRIPS + LEAVES
+const PHASE_BONUS = YARD_PHASES.length * 40
+const MAX_SCORE = BUSHES * 5 + BUSHES * 25 + STRIPS * 15 + LEAVES * 15 + PHASE_BONUS + 60
+const PICKUP_RADIUS = 6.5
+const TRUCK = { x: 50, y: 92 }
+const COMBO_WINDOW = 2400
+const TIERS = [6, 12, 18]
+
 const rand = (min, max) => min + Math.random() * (max - min)
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+const near = (a, b, r) => Math.hypot(a.x - b.x, a.y - b.y) < r
 
 function makeObjects() {
-  const bushes = Array.from({ length: BUSHES }, (_, i) => ({ id: `b${i}`, x: rand(10, 90), y: rand(14, 84), found: false }))
-  const poops = bushes.map((b, i) => ({ id: `p${i}`, x: clamp(b.x + rand(-6, 6), 8, 92), y: clamp(b.y + rand(-6, 6), 12, 88), found: false, scooped: false }))
-  const strips = Array.from({ length: STRIPS }, (_, i) => ({ id: `s${i}`, x: rand(8, 92), y: rand(12, 88), mowed: false }))
-  const leaves = Array.from({ length: LEAVES }, (_, i) => ({ id: `l${i}`, x: rand(8, 92), y: rand(12, 88), raked: false }))
+  const bushes = Array.from({ length: BUSHES }, (_, i) => ({ id: `b${i}`, x: rand(12, 88), y: rand(16, 84), found: false }))
+  const poops = bushes.map((b, i) => ({ id: `p${i}`, x: clamp(b.x + rand(-9, 9), 8, 92), y: clamp(b.y + rand(-9, 9), 12, 88), found: false, scooped: false }))
+  const strips = Array.from({ length: STRIPS }, (_, i) => ({ id: `s${i}`, x: rand(8, 92), y: rand(14, 86), mowed: false }))
+  const leaves = Array.from({ length: LEAVES }, (_, i) => ({ id: `l${i}`, x: rand(8, 92), y: rand(14, 86), raked: false }))
   return { bushes, poops, strips, leaves }
 }
 
-export default function YardJob({ market, characterId, perks = [], upgrades = {}, onFinish, onQuit, onCallout }) {
+export default function YardJob({ market, characterId, perks = [], upgrades = {}, level = 1, onFinish, onQuit, onCallout }) {
   const char = characterById(characterId)
-  const hasPerk = (id) => perks.includes(id)
-  const speed = 30 + (upgrades.bike || 0) * 3.5 + (char.perkEffect.speed || 1) * 5
-  const SHIFT = 58 + (hasPerk('rally-timer') ? 10 : 0)
+  const hasPerk = useCallback((id) => perks.includes(id), [perks])
+  const difficulty = 1 + Math.min(0.4, (level - 1) * 0.06)
+  const speed = (34 + (upgrades.bike || 0) * 2.5 + (char.perkEffect.speed || 1) * 4) * (1 + (level - 1) * 0.015)
+  const capacity = 3 + (hasPerk('magnet-bag') ? 2 : 0) + Math.min(2, upgrades.bag || 0)
+  const SHIFT = Math.max(32, Math.round((52 + (hasPerk('rally-timer') ? 7 : 0)) / (1 + Math.min(0.25, (level - 1) * 0.04))))
 
   const [objects, setObjects] = useState(makeObjects)
-  const [player, setPlayer] = useState({ x: 50, y: 82 })
+  const [player, setPlayer] = useState({ ...TRUCK })
   const [phaseIndex, setPhaseIndex] = useState(0)
   const [timeLeft, setTimeLeft] = useState(SHIFT)
   const [score, setScore] = useState(0)
   const [combo, setCombo] = useState(0)
-  const [banner, setBanner] = useState('🐾 MOVE with WASD/arrows · scoop on contact!')
+  const [comboClock, setComboClock] = useState(0)
+  const [carried, setCarried] = useState(0)
+  const [mistakes, setMistakes] = useState(0)
+  const [banner, setBanner] = useState('🐾 Ride into targets · dump at the 🛻 · keep the chain alive!')
   const [chaos, setChaos] = useState(null)
   const [moving, setMoving] = useState(false)
   const [popping, setPopping] = useState(false)
+  const [bagFlash, setBagFlash] = useState(false)
   const [ended, setEnded] = useState(false)
 
   const objectsRef = useRef(objects); objectsRef.current = objects
@@ -42,111 +55,222 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
   const movingRef = useRef(false)
   const scoreRef = useRef(0)
   const comboRef = useRef(0)
+  const comboTimeRef = useRef(Date.now())
+  const carriedRef = useRef(0)
+  const mistakesRef = useRef(0)
   const phaseRef = useRef(0)
   const phaseLockRef = useRef(false)
   const finishedRef = useRef(false)
   const tierRef = useRef(0)
-  const lastCollectRef = useRef(Date.now())
   const collectRef = useRef(() => {})
+  const dumpRef = useRef(() => {})
   const popTimer = useRef(null)
+  const bagTimer = useRef(null)
+  const chaosTimer = useRef(null)
+  const chaosRef = useRef(null)
+  const hazardHitRef = useRef(false)
+  const fullWarnRef = useRef(0)
+  const bannerTimer = useRef(null)
 
   const commit = useCallback((next) => { objectsRef.current = next; setObjects(next) }, [])
 
-  const bumpCombo = useCallback((delta) => {
-    comboRef.current = Math.max(0, comboRef.current + delta)
-    setCombo(comboRef.current)
+  const flashBanner = useCallback((text, ms = 1800) => {
+    setBanner(text)
+    clearTimeout(bannerTimer.current)
+    bannerTimer.current = window.setTimeout(() => setBanner(null), ms)
   }, [])
+
+  const clearChaos = useCallback(() => { chaosRef.current = null; setChaos(null) }, [])
+
+  const breakCombo = useCallback((reason) => {
+    if (comboRef.current > 0) {
+      comboRef.current = 0
+      tierRef.current = 0
+      setCombo(0)
+      setComboClock(0)
+      if (reason) flashBanner(reason)
+    }
+    comboTimeRef.current = Date.now()
+  }, [flashBanner])
 
   const addScore = useCallback((n, comboGain = 0) => {
     scoreRef.current += n
     setScore(scoreRef.current)
-    lastCollectRef.current = Date.now()
-    if (comboGain) bumpCombo(comboGain)
-  }, [bumpCombo])
+    if (comboGain) {
+      const now = Date.now()
+      if (now - comboTimeRef.current > COMBO_WINDOW) {
+        comboRef.current = 0
+        tierRef.current = 0
+      }
+      comboRef.current += comboGain
+      comboTimeRef.current = now
+      setCombo(comboRef.current)
+    }
+  }, [])
 
   const award = useCallback((base, comboGain = 0) => {
-    const mult = 1 + Math.min(1, Math.floor(comboRef.current / 5) * 0.25)
+    const mult = 1 + Math.min(0.75, Math.floor(comboRef.current / 4) * 0.15)
     addScore(Math.round(base * mult), comboGain)
   }, [addScore])
+
+  const phaseDone = useCallback(() => {
+    const cur = objectsRef.current
+    const phase = phaseRef.current
+    const clear =
+      (phase === 0 && cur.bushes.every((b) => b.found)) ||
+      (phase === 1 && cur.poops.every((p) => p.scooped) && carriedRef.current === 0) ||
+      (phase === 2 && cur.strips.every((s) => s.mowed)) ||
+      (phase === 3 && cur.leaves.every((l) => l.raked) && carriedRef.current === 0)
+    return clear
+  }, [])
 
   const finish = useCallback((late) => {
     if (finishedRef.current) return
     finishedRef.current = true
     setEnded(true)
-    const completion = Math.min(1, scoreRef.current / MAX_SCORE)
-    const early = late ? 0 : Math.min(0.15, (timeLeft / SHIFT) * 0.15)
-    const performance = clamp(completion * (late ? 0.55 : 1) + early, 0, 1)
+    const cur = objectsRef.current
+    const done = cur.bushes.filter((b) => b.found).length + cur.poops.filter((p) => p.scooped).length +
+      cur.strips.filter((s) => s.mowed).length + cur.leaves.filter((l) => l.raked).length
+    const completion = done / TARGETS
+    const timeRatio = timeLeft / SHIFT
+    const comboRatio = Math.min(1, comboRef.current / TIERS[2])
+    const phases = phaseRef.current / YARD_PHASES.length
+    const penalty = Math.min(0.35, mistakesRef.current * 0.07)
+    let performance = clamp(completion * 0.5 + phases * 0.08 + timeRatio * 0.1 + comboRatio * 0.17 + 0.18 - penalty, 0, 1)
+    if (late) performance *= 0.55
     if (late) { audio.hurt(); onCallout?.('late') }
     else { audio.fanfare(); onCallout?.('onTime') }
-    onFinish({ performance, late, character: char, perks, completion })
+    onFinish({ performance, late, mistakes: mistakesRef.current, character: char, perks, completion })
   }, [timeLeft, SHIFT, onFinish, char, perks, onCallout])
 
   const advancePhase = useCallback(() => {
     if (phaseLockRef.current || finishedRef.current) return
     phaseLockRef.current = true
-    addScore(50)
+    addScore(40)
     audio.phase()
     onCallout?.('phase')
-    setBanner('✨ STATION CLEAR! +50')
+    flashBanner('✨ STATION CLEAR! +40 · chain carries over!')
     const next = phaseRef.current + 1
     window.setTimeout(() => {
       if (next >= YARD_PHASES.length) finish(false)
       else {
         phaseRef.current = next
         setPhaseIndex(next)
-        setBanner(`${YARD_PHASES[next].icon} ${YARD_PHASES[next].hint}`)
+        flashBanner(`${YARD_PHASES[next].icon} ${YARD_PHASES[next].hint}`, 2200)
         phaseLockRef.current = false
       }
-    }, 700)
-  }, [addScore, finish, onCallout])
+    }, 650)
+  }, [addScore, finish, onCallout, flashBanner])
 
-  // ---- movement + auto-collect ----
+  const dumpBag = useCallback(() => {
+    const n = carriedRef.current
+    if (n <= 0 || finishedRef.current) return
+    carriedRef.current = 0
+    setCarried(0)
+    addScore(n * 8)
+    audio.coin()
+    setBagFlash(true)
+    clearTimeout(bagTimer.current)
+    bagTimer.current = window.setTimeout(() => setBagFlash(false), 350)
+    flashBanner(`🛻 HAULED ${n}! +${n * 8} · get back out there`)
+    if (phaseDone()) advancePhase()
+  }, [addScore, advancePhase, flashBanner, phaseDone])
+
+  dumpRef.current = dumpBag
+
   const collect = useCallback(() => {
     if (phaseLockRef.current || finishedRef.current) return
     const p = playerRef.current
     const cur = objectsRef.current
-    const radius = PICKUP_RADIUS + (hasPerk('magnet-bag') ? 5 : 0)
-    // Rendered targets use percentage positions; use distance in percent so
-    // the sprite actually overlaps the piles when it scoops them.
-    const near = (o) => Math.hypot(p.x - o.x, p.y - o.y) < radius
+    const radius = PICKUP_RADIUS + (hasPerk('magnet-bag') ? 1.5 : 0)
     const phase = phaseRef.current
     let changed = false
     let points = 0
     let gain = 0
 
     if (phase === 0) {
-      const hits = cur.bushes.filter((b) => !b.found && near(b))
+      const hits = cur.bushes.filter((b) => !b.found && near(p, b, radius))
       if (hits.length) {
         changed = true
-        const bushes = cur.bushes.map((b) => hits.some((h) => h.id === b.id) ? { ...b, found: true } : b)
-        const poops = cur.poops.map((o) => hits.some((h) => o.id === `p${h.id.slice(1)}`) ? { ...o, found: true } : o)
+        const ids = new Set(hits.map((h) => h.id))
+        // Super Sniffer reveals one extra bush nearby, not the whole lawn.
+        if (hasPerk('super-sniffer')) {
+          const extra = cur.bushes.filter((b) => !b.found && !ids.has(b.id))
+            .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]
+          if (extra) ids.add(extra.id)
+        }
+        const bushes = cur.bushes.map((b) => ids.has(b.id) ? { ...b, found: true } : b)
+        const poops = cur.poops.map((o) => ids.has(`b${o.id.slice(1)}`) ? { ...o, found: true } : o)
         commit({ ...cur, bushes, poops })
-        points = 5 * hits.length; gain = hits.length
-        if (!foundOnce.current) { foundOnce.current = true; onCallout?.('found') }
+        points = 5 * ids.size
+        gain = ids.size
+        onCallout?.('found')
       }
     } else if (phase === 1) {
-      const hits = cur.poops.filter((o) => o.found && !o.scooped && near(o))
+      const available = cur.poops.filter((o) => o.found && !o.scooped && near(p, o, radius))
+      if (available.length && carriedRef.current >= capacity) {
+        if (Date.now() - fullWarnRef.current > 1500) {
+          fullWarnRef.current = Date.now()
+          audio.hurt()
+          flashBanner('🎒 BAG FULL! Ride back to the 🛻 before scooping more')
+        }
+        return
+      }
+      const slots = capacity - carriedRef.current
+      const hits = available.slice(0, slots)
       if (hits.length) {
         changed = true
-        const poops = cur.poops.map((o) => hits.some((h) => h.id === o.id) ? { ...o, scooped: true } : o)
+        const ids = new Set(hits.map((h) => h.id))
+        const poops = cur.poops.map((o) => ids.has(o.id) ? { ...o, scooped: true } : o)
         commit({ ...cur, poops })
-        points = (hasPerk('golden-scoop') ? 40 : 20) * hits.length; gain = hits.length
+        carriedRef.current += hits.length
+        setCarried(carriedRef.current)
+        points = (hasPerk('golden-scoop') ? 50 : 25) * hits.length
+        gain = hits.length
+        if (carriedRef.current >= capacity) flashBanner('🎒 BAG FULL! Dump at the 🛻')
       }
     } else if (phase === 2) {
-      const hits = cur.strips.filter((o) => !o.mowed && near(o))
+      const hits = cur.strips.filter((o) => !o.mowed && near(p, o, radius))
       if (hits.length) {
         changed = true
-        const strips = cur.strips.map((o) => hits.some((h) => h.id === o.id) ? { ...o, mowed: true } : o)
+        const ids = new Set(hits.map((h) => h.id))
+        if (hasPerk('turbo-mower')) {
+          const extra = cur.strips.filter((o) => !o.mowed && !ids.has(o.id))
+            .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]
+          if (extra) ids.add(extra.id)
+        }
+        const strips = cur.strips.map((o) => ids.has(o.id) ? { ...o, mowed: true } : o)
         commit({ ...cur, strips })
-        points = 15 * hits.length; gain = hits.length
+        points = 15 * ids.size
+        gain = ids.size
       }
     } else {
-      const hits = cur.leaves.filter((o) => !o.raked && near(o))
+      const available = cur.leaves.filter((o) => !o.raked && near(p, o, radius))
+      if (available.length && carriedRef.current >= capacity) {
+        if (Date.now() - fullWarnRef.current > 1500) {
+          fullWarnRef.current = Date.now()
+          audio.hurt()
+          flashBanner('🍂 ARMS FULL! Ride back to the 🛻')
+        }
+        return
+      }
+      const slots = capacity - carriedRef.current
+      const hits = available.slice(0, slots)
       if (hits.length) {
         changed = true
-        const leaves = cur.leaves.map((o) => hits.some((h) => h.id === o.id) ? { ...o, raked: true } : o)
+        const ids = new Set(hits.map((h) => h.id))
+        if (hasPerk('leaf-blower')) {
+          const extra = cur.leaves.filter((o) => !o.raked && !ids.has(o.id))
+            .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]
+          if (extra && carriedRef.current + ids.size < capacity) ids.add(extra.id)
+        }
+        const leaves = cur.leaves.map((o) => ids.has(o.id) ? { ...o, raked: true } : o)
         commit({ ...cur, leaves })
-        points = 15 * hits.length; gain = hits.length
+        carriedRef.current += ids.size
+        setCarried(carriedRef.current)
+        points = 15 * ids.size
+        gain = ids.size
+        if (carriedRef.current >= capacity) flashBanner('🍂 ARMS FULL! Dump at the 🛻')
       }
     }
 
@@ -155,23 +279,16 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
       audio.scoop()
       setPopping(true)
       clearTimeout(popTimer.current)
-      popTimer.current = window.setTimeout(() => setPopping(false), 180)
-      const allDone =
-        (phase === 0 && objectsRef.current.bushes.every((b) => b.found)) ||
-        (phase === 1 && objectsRef.current.poops.every((p) => p.scooped)) ||
-        (phase === 2 && objectsRef.current.strips.every((s) => s.mowed)) ||
-        (phase === 3 && objectsRef.current.leaves.every((l) => l.raked))
-      if (allDone) advancePhase()
+      popTimer.current = window.setTimeout(() => setPopping(false), 160)
+      if (phaseDone()) advancePhase()
     }
-  }, [award, commit, hasPerk, onCallout, advancePhase])
+  }, [advancePhase, award, capacity, commit, flashBanner, hasPerk, onCallout, phaseDone])
   collectRef.current = collect
-  const foundOnce = useRef(false)
 
+  // movement, combo clock, carry dump, hazard contact
   useEffect(() => {
     if (ended) return
     let last = performance.now()
-    // setInterval (rather than rAF) keeps the sprint alive in background tabs
-    // and low-power mobile browsers where animation frames get throttled.
     const tick = () => {
       const now = performance.now()
       const dt = Math.min(0.05, (now - last) / 1000); last = now
@@ -180,22 +297,46 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
       const dy = (k.down ? 1 : 0) - (k.up ? 1 : 0)
       const isMoving = !!(dx || dy)
       if (isMoving !== movingRef.current) { movingRef.current = isMoving; setMoving(isMoving) }
+
       if (isMoving) {
-        const n = Math.hypot(dx, dy) || 1
-        const slow = chaos?.type === 'sprinkler' && !hasPerk('hearth-shield') ? 0.55 : 1
+        let slow = 1
+        if (chaos && (chaos.type === 'sprinkler' || chaos.type === 'mud') && near(playerRef.current, chaos.pos, 13)) slow = hasPerk('hearth-shield') ? 0.85 : 0.5
+        const n = Math.hypot(dx, dy)
         const next = {
-          x: clamp(playerRef.current.x + (dx / n) * speed * slow * dt, 6, 94),
-          y: clamp(playerRef.current.y + (dy / n) * speed * slow * dt, 10, 90),
+          x: clamp(playerRef.current.x + (dx / n) * speed * slow * dt, 5, 95),
+          y: clamp(playerRef.current.y + (dy / n) * speed * slow * dt, 10, 93),
         }
         playerRef.current = next
         setPlayer(next)
       }
-      if (Date.now() - lastCollectRef.current > 3200 && comboRef.current > 0) bumpCombo(-comboRef.current)
+
+      if (carriedRef.current > 0 && near(playerRef.current, TRUCK, 8)) dumpRef.current()
+
+      if (comboRef.current > 0) {
+        const left = 1 - (Date.now() - comboTimeRef.current) / COMBO_WINDOW
+        setComboClock(Math.max(0, left))
+        if (left <= 0) breakCombo('🔥 COMBO COOLED! Chain lost')
+      }
+
+      if (chaos && !hazardHitRef.current && (chaos.type === 'sprinkler' || chaos.type === 'mud') && near(playerRef.current, chaos.pos, 11)) {
+        hazardHitRef.current = true
+        if (hasPerk('hearth-shield')) {
+          addScore(40)
+          flashBanner('🛡️ SHIELD BLOCK! +40')
+        } else {
+          mistakesRef.current += 1
+          setMistakes(mistakesRef.current)
+          setTimeLeft((t) => Math.max(0, t - 2))
+          if (hasPerk('combo-keeper')) flashBanner(chaos.type === 'sprinkler' ? '💦 SPLASHED! -2s · chain held' : '🟤 MUD! -2s · chain held')
+          else breakCombo(chaos.type === 'sprinkler' ? '💦 SPLASHED! -2s · combo lost' : '🟤 MUD! -2s · combo lost')
+        }
+      }
+
       collectRef.current()
     }
     const id = setInterval(tick, 16)
     return () => clearInterval(id)
-  }, [speed, ended, chaos?.type, hasPerk, bumpCombo])
+  }, [addScore, breakCombo, chaos, ended, flashBanner, hasPerk, speed])
 
   // departure clock
   useEffect(() => {
@@ -206,10 +347,8 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
 
   // keyboard
   useEffect(() => {
-    const set = (key, down) => {
-      const map = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down' }
-      if (map[key]) keysRef.current[map[key]] = down
-    }
+    const map = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down' }
+    const set = (key, down) => { if (map[key]) keysRef.current[map[key]] = down }
     const down = (e) => { set(e.key, true); if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault() }
     const up = (e) => set(e.key, false)
     window.addEventListener('keydown', down)
@@ -219,51 +358,75 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
 
   // combo tiers
   useEffect(() => {
-    if (combo >= 20 && tierRef.current < 3) { tierRef.current = 3; audio.combo(3); onCallout?.('legend') }
-    else if (combo >= 10 && tierRef.current < 2) { tierRef.current = 2; audio.combo(2); onCallout?.('storm') }
-    else if (combo >= 5 && tierRef.current < 1) { tierRef.current = 1; audio.combo(1); onCallout?.('hotStreak') }
+    if (combo >= TIERS[2] && tierRef.current < 3) { tierRef.current = 3; audio.combo(3); onCallout?.('legend') }
+    else if (combo >= TIERS[1] && tierRef.current < 2) { tierRef.current = 2; audio.combo(2); onCallout?.('storm') }
+    else if (combo >= TIERS[0] && tierRef.current < 1) { tierRef.current = 1; audio.combo(1); onCallout?.('hotStreak') }
   }, [combo, onCallout])
 
-  // chaos
+  // chaos escalates each phase
   useEffect(() => {
     if (phaseIndex === 0 || ended) return
     const id = setInterval(() => {
       if (chaos || phaseLockRef.current || finishedRef.current) return
-      if (Math.random() > 0.45) return
-      const types = ['sprinkler', 'dog', 'gust']
+      if (Math.random() > 0.55 * difficulty) return
+      const types = ['sprinkler', 'dog', 'gust', 'mud']
       const type = types[Math.floor(Math.random() * types.length)]
-      setChaos({ type, id: Date.now() })
-      if (type === 'sprinkler') {
-        audio.hurt(); onCallout?.('sprinkler')
-        if (hasPerk('hearth-shield')) { award(40); setBanner('🛡️ SHIELD BLOCK! +40') }
-        else { if (!hasPerk('combo-keeper')) bumpCombo(-3); setBanner('💦 SPRINKLER! SLOWED DOWN') }
-      } else if (type === 'dog') {
-        audio.dog(); onCallout?.('dog'); setBanner('🐕 LOOSE DOG! TAP IT!')
-      } else {
-        setBanner('🍃 LEAF GUST!')
+      hazardHitRef.current = false
+      const next = { type, id: Date.now(), pos: { x: rand(12, 88), y: rand(18, 86) } }
+      chaosRef.current = { ...next, active: true }
+      setChaos(next)
+      if (type === 'dog') {
+        audio.dog(); onCallout?.('dog')
+        flashBanner('🐕 LOOSE DOG! TAP IT BEFORE IT BITES!', 2000)
+        chaosTimer.current = window.setTimeout(() => {
+          if (finishedRef.current || !chaosRef.current?.active || chaosRef.current.id !== next.id) return
+          chaosRef.current.active = false
+          mistakesRef.current += 1
+          setMistakes(mistakesRef.current)
+          setTimeLeft((t) => Math.max(0, t - 3))
+          if (hasPerk('combo-keeper')) flashBanner('🐕 DOG BIT! -3s · chain held')
+          else breakCombo('🐕 DOG BIT! -3s · combo lost')
+          clearChaos()
+        }, 2200)
+      } else if (type === 'gust') {
         const cur = objectsRef.current
-        commit({ ...cur, leaves: cur.leaves.map((l) => l.raked ? l : { ...l, x: rand(8, 92), y: rand(12, 88) }) })
+        commit({
+          ...cur,
+          leaves: cur.leaves.map((l) => l.raked ? l : { ...l, x: rand(8, 92), y: rand(14, 86) }),
+          poops: cur.poops.map((p) => p.scooped ? p : { ...p, x: clamp(p.x + rand(-8, 8), 8, 92), y: clamp(p.y + rand(-8, 8), 12, 88) }),
+        })
+        audio.hurt(); onCallout?.('gust')
+        flashBanner('🍃 GUST! Targets moved — re-route!', 1800)
+        chaosTimer.current = window.setTimeout(clearChaos, 1400)
+      } else {
+        audio.hurt(); onCallout?.('sprinkler')
+        flashBanner(type === 'sprinkler' ? '💦 SPRINKLER ZONE! Avoid the water' : '🟤 MUD PATCH! Slow going', 1800)
+        chaosTimer.current = window.setTimeout(clearChaos, 3200)
       }
-      window.setTimeout(() => { setChaos(null); setBanner(null) }, 2600)
-    }, 6000)
+    }, Math.max(2600, 4400 / difficulty))
     return () => clearInterval(id)
-  }, [phaseIndex, ended, chaos, hasPerk, award, bumpCombo, commit, onCallout])
+  }, [breakCombo, chaos, clearChaos, commit, difficulty, ended, flashBanner, hasPerk, onCallout, phaseIndex])
 
   const onChaosDog = () => {
     if (chaos?.type !== 'dog') return
-    audio.dog(); award(30, 2); setChaos(null)
-    setBanner('🎉 GOOD DOG! +30')
-    window.setTimeout(() => setBanner(null), 1300)
+    clearTimeout(chaosTimer.current)
+    if (chaosRef.current) chaosRef.current.active = false
+    audio.dog()
+    award(30, 2)
+    clearChaos()
+    flashBanner('🎉 GOOD DOG! +30 · chain saved')
   }
 
   const hold = (key, down) => { keysRef.current[key] = down }
   const phase = YARD_PHASES[phaseIndex]
-  const comboTier = combo >= 20 ? 'LEGENDARY SCŪPHR' : combo >= 10 ? 'SCUPH STORM' : combo >= 5 ? 'HOT STREAK' : null
+  const tier = combo >= TIERS[2] ? 3 : combo >= TIERS[1] ? 2 : combo >= TIERS[0] ? 1 : 0
+  const comboTier = ['', 'HOT STREAK', 'SCUPH STORM', 'LEGENDARY SCŪPHR'][tier]
   const tool = { find: '🔍', scoop: '🧹', mow: '🚜', rake: '🍂' }[phase.id]
-  const urgent = timeLeft <= 10
+  const urgent = timeLeft <= 8
+  const full = carried >= capacity
 
   return (
-    <div className={`yard-job action ${urgent ? 'urgent' : ''} ${comboTier ? `tier-${combo >= 20 ? 'legend' : combo >= 10 ? 'storm' : 'hot'}` : ''}`}>
+    <div className={`yard-job action ${urgent ? 'urgent' : ''} ${tier ? `tier-${['', 'hot', 'storm', 'legend'][tier]}` : ''}`}>
       <div className="yard-hud">
         <button className="hud-quit" onClick={onQuit}>← Map</button><strong>{market}</strong>
         <div className="phase-track">
@@ -275,13 +438,19 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
         </div>
       </div>
 
-      <div className="departure-bar"><i style={{ width: `${(timeLeft / SHIFT) * 100}%` }} /><span>{urgent ? '⏰ LATE TO NEXT JOB!' : `NEXT JOB DEPARTS IN ${timeLeft}s · BE EFFICIENT`}</span></div>
+      <div className="departure-bar"><i style={{ width: `${(timeLeft / SHIFT) * 100}%` }} /><span>{urgent ? '⏰ DEPARTURE IMMINENT!' : `NEXT JOB DEPARTS IN ${timeLeft}s · ROUTE SMART`}</span></div>
+      <div className="pressure-bar">
+        <div className="combo-meter"><span>🔥 CHAIN {combo}</span><i style={{ width: `${comboClock * 100}%` }} /></div>
+        <div className={`bag-meter ${full ? 'full' : ''} ${bagFlash ? 'flash' : ''}`}><span>🎒 {carried}/{capacity}</span><small>{full ? 'DUMP AT TRUCK!' : 'carry limit'}</small></div>
+        <div className="mistake-meter">⚠ {mistakes} mistakes</div>
+      </div>
 
       <div className="yard-arena">
         <div className="yard-sky" /><div className="yard-sun" /><div className="yard-fence" /><div className="yard-grass" /><div className="yard-house">🏡</div>
+        <div className={`yard-truck ${full ? 'calling' : ''}`} style={{ left: `${TRUCK.x}%`, top: `${TRUCK.y}%` }}>🛻<small>DUMP</small></div>
         <div className="yard-target-field">
           {phase.id === 'find' && objects.bushes.filter((b) => !b.found).map((b) => (
-            <button key={b.id} className="yard-obj bush" style={{ left: `${b.x}%`, top: `${b.y}%` }} title="Walk here to search">🌳<span className="question">?</span></button>
+            <div key={b.id} className="yard-obj bush" style={{ left: `${b.x}%`, top: `${b.y}%` }}>🌳<span className="question">?</span></div>
           ))}
           {phase.id === 'scoop' && objects.poops.filter((p) => p.found && !p.scooped).map((p) => (
             <div key={p.id} className="yard-obj poop" style={{ left: `${p.x}%`, top: `${p.y}%` }}>💩</div>
@@ -299,22 +468,26 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
             <div key={l.id} className="yard-obj raked" style={{ left: `${l.x}%`, top: `${l.y}%` }}>🍁</div>
           ))}
 
+          {chaos && (chaos.type === 'sprinkler' || chaos.type === 'mud') && (
+            <div className={`hazard-zone ${chaos.type}`} style={{ left: `${chaos.pos.x}%`, top: `${chaos.pos.y}%` }}>
+              {chaos.type === 'sprinkler' ? '💦' : '🟤'}
+            </div>
+          )}
+
           <div className={`yard-player ${moving ? 'moving' : ''} ${popping ? 'popping' : ''}`} style={{ left: `${player.x}%`, top: `${player.y}%`, '--player-color': char.color }}>
             <CharacterSprite character={char} pose="work" />
-            <span className="yard-tool">{tool}</span>
+            <span className="yard-tool">{full ? '🛻' : tool}</span>
           </div>
         </div>
 
-        {chaos?.type === 'sprinkler' && <div className="sprinkler-overlay">💦 SPRINKLER! 💦</div>}
         {chaos?.type === 'dog' && <button className="chaos-dog" onClick={onChaosDog}>🐕</button>}
-        {chaos?.type === 'gust' && <div className="gust-overlay">🍃🍃🍃</div>}
         {banner && <div className="yard-banner">{banner}</div>}
         {comboTier && <div className="combo-tier"><span className="combo-x">x{combo}</span> {comboTier}</div>}
       </div>
 
       <div className="yard-bottom">
-        <div className="combo-plate">🔥 Combo <strong>x{combo}</strong></div>
-        <div className="yard-hint">MOVE: WASD / arrows · touch the pad below · scoop by walking into piles</div>
+        <div className="combo-plate">🔥 <strong>x{combo}</strong> / {TIERS[2]}</div>
+        <div className="yard-hint">WASD / arrows · scoop on contact · return to 🛻 when full · keep moving or the chain dies</div>
         <div className="perk-strip">{perks.length === 0 ? <span className="no-perks">No perks yet — level up to earn one!</span> : perks.map((id) => <span key={id} className="perk-chip">{id.replace(/-/g, ' ')}</span>)}</div>
       </div>
 

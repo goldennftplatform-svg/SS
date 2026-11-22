@@ -66,7 +66,7 @@ export default function App() {
   const briefJob = (type) => {
     if (!open(save, city)) return
     const market = cities[city]
-    const jobType = type === 'yard' ? 'yard' : market.special
+    const jobType = type
     const config = { city, type: jobType, urgency: type === 'urgent' }
     setJobConfig(config)
     audio.select()
@@ -88,7 +88,7 @@ export default function App() {
     if (late) {
       rewards.coins = Math.round(rewards.coins * 0.5)
       rewards.xp = Math.round(rewards.xp * 0.6)
-      rewards.repDelta = -0.3
+      rewards.repDelta = +(rewards.repDelta - 0.3).toFixed(2)
       rewards.late = true
     }
     const id = jobConfig.city
@@ -196,12 +196,12 @@ export default function App() {
       )}
       {screen === 'route' && jobConfig && (
         <RouteGame market={cities[jobConfig.city].name} characterId={save.activeCharacter} urgency={jobConfig.urgency}
-          upgrades={save.upgrades} onCallout={calloutLine}
+          upgrades={save.upgrades} level={save.level} onCallout={calloutLine}
           onFinish={(result) => completeJob(result, scoreRoute)}
           onQuit={() => setScreen('map')} />
       )}
       {screen === 'yard' && jobConfig && (
-        <YardJob market={cities[jobConfig.city].name} characterId={save.activeCharacter} perks={save.perks} upgrades={save.upgrades}
+        <YardJob market={cities[jobConfig.city].name} characterId={save.activeCharacter} perks={save.perks} upgrades={save.upgrades} level={save.level}
           onCallout={calloutLine}
           onFinish={(result) => completeJob(result, scoreYardJob)}
           onQuit={() => setScreen('map')} />

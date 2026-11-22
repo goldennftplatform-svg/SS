@@ -478,6 +478,58 @@ button { font-family: inherit; cursor: pointer; }
 .yard-dpad button:active { transform: translateY(3px); box-shadow: none; background: var(--gold); }
 @media (max-width: 700px) { .yard-dpad { bottom: 52px; right: 6px; } .yard-dpad button { width: 36px; height: 36px; } }
 
+/* ---------- pressure systems ---------- */
+.pressure-bar {
+  display: flex; align-items: stretch; gap: 6px; padding: 5px 10px;
+  background: #17202f; border-bottom: 3px solid #0c111b; color: #fff;
+  font: 800 10px ui-monospace, monospace; letter-spacing: .04em;
+}
+.combo-meter { flex: 1; min-width: 90px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; }
+.combo-meter span { color: var(--gold, #ffd35a); white-space: nowrap; }
+.combo-meter i {
+  display: block; height: 8px; border-radius: 8px; background: linear-gradient(90deg, #ff7a45, #ffd35a);
+  box-shadow: 0 0 8px #ffb34788; transition: width .08s linear;
+}
+.bag-meter {
+  display: flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 8px;
+  background: #243a2c; border: 2px solid #6fa85c; white-space: nowrap;
+}
+.bag-meter small { color: #b9d8b0; font-size: 9px; }
+.bag-meter.full { background: #5c2d2d; border-color: #ff6b5e; animation: pulse .5s infinite; }
+.bag-meter.flash { animation: bagFlash .3s ease-out; }
+@keyframes bagFlash { 50% { transform: scale(1.12); filter: brightness(1.5); } }
+.mistake-meter { display: flex; align-items: center; padding: 2px 9px; border-radius: 8px; background: #3a2a2a; color: #ffb3a8; white-space: nowrap; }
+.route-pressure { position: relative; z-index: 4; background: #101820; }
+.route-pressure .combo-meter i { background: linear-gradient(90deg, #ff5f6d, #ffd35a); }
+
+.yard-truck {
+  position: absolute; z-index: 5; transform: translate(-50%, -50%); font-size: clamp(24px, 4vw, 36px);
+  filter: drop-shadow(0 4px 3px #0007); pointer-events: none;
+}
+.yard-truck small {
+  display: block; margin-top: -4px; text-align: center; font: 900 8px ui-monospace, monospace;
+  color: #fff; text-shadow: 1px 1px 0 #000; letter-spacing: .08em;
+}
+.yard-truck.calling { animation: truckCall .5s infinite alternate; }
+@keyframes truckCall { to { transform: translate(-50%, -50%) scale(1.18); filter: drop-shadow(0 0 10px #ffd35a); } }
+
+.hazard-zone {
+  position: absolute; z-index: 4; transform: translate(-50%, -50%); width: clamp(54px, 9vw, 86px);
+  height: clamp(54px, 9vw, 86px); border-radius: 50%; display: grid; place-items: center; font-size: 30px;
+  pointer-events: none; animation: hazardPulse .7s infinite alternate;
+}
+.hazard-zone.sprinkler { background: radial-gradient(circle, #7fd8ff99, #2d7fb300); border: 3px dashed #9be4ff; }
+.hazard-zone.mud { background: radial-gradient(circle, #8a5a3499, #3b241800); border: 3px dashed #c08a52; }
+@keyframes hazardPulse { to { transform: translate(-50%, -50%) scale(1.12); opacity: .75; } }
+
+.route-game.tier-1 .game-viewport,
+.route-game.tier-2 .game-viewport,
+.route-game.tier-3 .game-viewport { box-shadow: inset 0 0 40px #ffb34755; }
+.route-game.tier-2 .game-viewport { box-shadow: inset 0 0 70px #ffd35a88; }
+.route-game.tier-3 .game-viewport { box-shadow: inset 0 0 90px #fff3aacc; animation: stormFlash .35s infinite alternate; }
+.route-game.bumping .game-viewport { animation: shakeScreen .25s; }
+@media (max-width: 560px) { .pressure-bar { font-size: 9px; gap: 4px; padding: 4px 6px; } .mistake-meter { display: none; } .bag-meter small { display: none; } }
+
 /* ---------- perk cards ---------- */
 .perk-screen { background: radial-gradient(circle at 50% 15%, #ffe6a0, #d98a4b 60%, #a94e3a); }
 .perk-bg-stars { position: absolute; inset: 0; font-size: 40px; color: rgba(255,255,255,.14); text-align: center; padding-top: 6%; letter-spacing: 60px; animation: spin 80s linear infinite; }

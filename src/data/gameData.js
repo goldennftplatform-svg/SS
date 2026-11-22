@@ -122,14 +122,14 @@ export const YARD_PHASES = [
 
 // Roguelite level-up rewards. Pick 1 of 3 after every level up.
 export const PERKS = [
-  { id: 'magnet-bag', name: 'Magnet Bag', icon: '🧲', desc: 'Auto-scoops a nearby pile every 2 seconds.', color: '#7fc6a0' },
-  { id: 'turbo-mower', name: 'Turbo Mower', icon: '⚡', desc: 'Each mow clears 2 grass strips at once.', color: '#f2d05a' },
-  { id: 'leaf-blower', name: 'Leaf Blower 3000', icon: '🍃', desc: 'Each rake clears 2 leaf clusters.', color: '#8fbf6a' },
-  { id: 'golden-scoop', name: 'Golden Scoop', icon: '🪙', desc: 'Double points from every scoop.', color: '#f2c14e' },
-  { id: 'super-sniffer', name: 'Super Sniffer', icon: '🐽', desc: 'Uncover 2 bushes with every tap.', color: '#e88b5a' },
-  { id: 'hearth-shield', name: 'Hearth Shield', icon: '🛡️', desc: 'Chaos events become bonus points instead of penalties.', color: '#e07b7b' },
-  { id: 'rally-timer', name: 'Rally Timer', icon: '⏱️', desc: '+4 seconds on every phase.', color: '#b58ce0' },
-  { id: 'combo-keeper', name: 'Combo Keeper', icon: '🔥', desc: 'Chaos never breaks your combo streak.', color: '#e0694f' },
+  { id: 'magnet-bag', name: 'Bigger Haul', icon: '🎒', desc: 'Carry 2 more items before dumping at the truck.', color: '#7fc6a0' },
+  { id: 'turbo-mower', name: 'Turbo Mower', icon: '⚡', desc: 'Each mow also clears one nearby strip.', color: '#f2d05a' },
+  { id: 'leaf-blower', name: 'Leaf Blower 3000', icon: '🍃', desc: 'Each rake also clears one nearby pile.', color: '#8fbf6a' },
+  { id: 'golden-scoop', name: 'Golden Scoop', icon: '🪙', desc: 'Double points from every poop scooped.', color: '#f2c14e' },
+  { id: 'super-sniffer', name: 'Super Sniffer', icon: '🐽', desc: 'Reveals one extra nearby bush per search.', color: '#e88b5a' },
+  { id: 'hearth-shield', name: 'Hearth Shield', icon: '🛡️', desc: 'Hazards give +40 instead of costing time and combo.', color: '#e07b7b' },
+  { id: 'rally-timer', name: 'Rally Timer', icon: '⏱️', desc: '+7 seconds on the whole shift.', color: '#b58ce0' },
+  { id: 'combo-keeper', name: 'Combo Keeper', icon: '🔥', desc: 'Hazards no longer break your chain. Timing still matters.', color: '#e0694f' },
 ]
 
 export function pickPerkChoices(owned = [], count = 3) {

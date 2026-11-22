@@ -4,46 +4,82 @@ import CharacterSprite from './CharacterSprite.jsx'
 import { audio } from '../audio/chiptune.js'
 
 const ROAD_LENGTH = 100
+const LANE_PATTERN = [1, 0, 2, 1, 2, 0, 2, 1, 0, 2, 1, 0, 1, 2]
 const PILES = Array.from({ length: 14 }, (_, i) => ({
   id: i,
-  at: 8 + i * 6.4 + (i % 3) * 1.2,
-  lane: i % 3,
+  at: 6 + i * 6.5 + (i % 3) * 0.6,
+  lane: LANE_PATTERN[i],
 }))
 const HAZARDS = [
-  { id: 'h1', at: 26, lane: 1, type: 'sprinkler' },
-  { id: 'h2', at: 44, lane: 0, type: 'dog' },
-  { id: 'h3', at: 61, lane: 2, type: 'sprinkler' },
-  { id: 'h4', at: 79, lane: 1, type: 'dog' },
+  { id: 'h1', at: 18, lane: 1, type: 'sprinkler' },
+  { id: 'h2', at: 34, lane: 2, type: 'dog' },
+  { id: 'h3', at: 50, lane: 0, type: 'sprinkler' },
+  { id: 'h4', at: 66, lane: 1, type: 'dog' },
+  { id: 'h5', at: 82, lane: 2, type: 'sprinkler' },
+  { id: 'h6', at: 93, lane: 0, type: 'dog' },
 ]
-const FRIENDLY_DOG_AT = [34, 70]
+const FRIENDLY_DOG_AT = [32, 67]
+const COMBO_WINDOW = 1900
+const TIERS = [5, 10, 14]
 
-export default function RouteGame({ market, characterId, urgency, upgrades, onFinish, onQuit, onCallout }) {
+export default function RouteGame({ market, characterId, urgency, upgrades, level = 1, onFinish, onQuit, onCallout }) {
   const char = characterById(characterId)
   const bikeLevel = upgrades.bike || 0
   const scoopLevel = upgrades.scoop || 0
-  const baseSpeed = (0.9 + bikeLevel * 0.12) * (char.perkEffect.speed || 1) * (urgency ? 1.18 : 1)
+  const difficulty = 1 + Math.min(0.35, (level - 1) * 0.05)
+  const baseSpeed = (0.45 + bikeLevel * 0.045) * (char.perkEffect.speed || 1) * (urgency ? 1.12 : 1) * difficulty
+  const TOTAL_TIME = Math.max(17, Math.round((urgency ? 22 : 28) / (1 + Math.min(0.2, (level - 1) * 0.025))))
 
   const [pos, setPos] = useState(0)
   const [lane, setLane] = useState(1)
   const [cleared, setCleared] = useState([])
   const [combo, setCombo] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(urgency ? 30 : 42)
+  const [comboClock, setComboClock] = useState(0)
+  const [mistakes, setMistakes] = useState(0)
+  const [timeLeft, setTimeLeft] = useState(TOTAL_TIME)
   const [bump, setBump] = useState(false)
   const [waved, setWaved] = useState([])
   const [done, setDone] = useState(false)
+  const doneRef = useRef(false)
   const posRef = useRef(0)
   const laneRef = useRef(1)
   const clearedRef = useRef([])
   const bumpRef = useRef(false)
   const tierRef = useRef(0)
+  const comboRef = useRef(0)
+  const comboTimeRef = useRef(Date.now())
+  const mistakesRef = useRef(0)
+  const hitRef = useRef(new Set())
+  const wavedRef = useRef([])
 
-  const scoopRadius = 4.2 + scoopLevel * 0.8 + (char.perkEffect.scoopRadius ? 3 : 0)
+  const scoopRadius = 3.6 + scoopLevel * 0.5 + (char.perkEffect.scoopRadius ? 1.5 : 0)
+
+  const breakCombo = useCallback((reason) => {
+    if (comboRef.current > 0) {
+      comboRef.current = 0
+      tierRef.current = 0
+      setCombo(0)
+      setComboClock(0)
+      if (reason) onCallout?.('comboLost')
+    }
+    comboTimeRef.current = Date.now()
+  }, [onCallout])
 
   const finish = useCallback((performance, late = false) => {
-    if (done) return
+    if (doneRef.current) return
+    doneRef.current = true
     setDone(true)
-    onFinish({ performance: Math.max(0, Math.min(1, performance)), urgency, character: char, late })
-  }, [done, onFinish, urgency, char])
+    onFinish({
+      performance: Math.max(0, Math.min(1, performance)),
+      late,
+      urgency,
+      mistakes: mistakesRef.current,
+      combo: comboRef.current,
+      cleared: clearedRef.current.length,
+      total: PILES.length,
+      character: char,
+    })
+  }, [onFinish, urgency, char])
 
   // main ride loop
   useEffect(() => {
@@ -57,31 +93,37 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
       posRef.current = next
       setPos(next)
 
-      if (bumpRef.current && Math.random() < 0.1) { bumpRef.current = false; setBump(false) }
+      if (bumpRef.current && Math.random() < 0.08) { bumpRef.current = false; setBump(false) }
+
+      if (comboRef.current > 0) {
+        const left = 1 - (Date.now() - comboTimeRef.current) / COMBO_WINDOW
+        setComboClock(Math.max(0, left))
+        if (left <= 0) breakCombo()
+      }
 
       if (next >= ROAD_LENGTH) {
-        const total = PILES.length
-        const cleanRatio = clearedRef.current.length / total
-        const timeRatio = timeLeft / (urgency ? 30 : 42)
-        const performance = cleanRatio * 0.65 + timeRatio * 0.25 + Math.min(1, combo / 12) * 0.1
+        const cleanRatio = clearedRef.current.length / PILES.length
+        const timeRatio = timeLeft / TOTAL_TIME
+        const comboRatio = Math.min(1, comboRef.current / TIERS[2])
+        const dogRatio = Math.min(1, wavedRef.current.length / FRIENDLY_DOG_AT.length)
+        const penalty = Math.min(0.3, mistakesRef.current * 0.05)
+        const performance = Math.max(0, Math.min(1,
+          cleanRatio * 0.55 + timeRatio * 0.1 + comboRatio * 0.2 + dogRatio * 0.05 + 0.12 - penalty
+        ))
         finish(performance)
       }
     }
     const id = setInterval(tick, 16)
     return () => clearInterval(id)
-  }, [done, baseSpeed, timeLeft, combo, urgency, finish, char])
+  }, [baseSpeed, breakCombo, char, done, finish, timeLeft, TOTAL_TIME])
 
   // countdown
   useEffect(() => {
     if (done) return
-    const id = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) { finish(0, true); return 0 }
-        return t - 1
-      })
-    }, 1000)
+    const id = setInterval(() => setTimeLeft((t) => Math.max(0, t - 1)), 1000)
     return () => clearInterval(id)
-  }, [done, finish])
+  }, [done])
+  useEffect(() => { if (timeLeft <= 0) finish(0, true) }, [timeLeft, finish])
 
   // keyboard controls
   useEffect(() => {
@@ -90,7 +132,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
       if (e.key === 'ArrowLeft' || e.key === 'a') { laneRef.current = Math.max(0, laneRef.current - 1); setLane(laneRef.current) }
       if (e.key === 'ArrowRight' || e.key === 'd') { laneRef.current = Math.min(2, laneRef.current + 1); setLane(laneRef.current) }
       if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); doScoop() }
-      if (e.key === 'w' || e.key === 'ArrowUp') { doWave() }
+      if (e.key === 'w' || e.key === 'ArrowUp') { e.preventDefault(); doWave() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -109,61 +151,85 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
       clearedRef.current = [...clearedRef.current, ...ids]
       setCleared(clearedRef.current)
       audio.scoop()
-      setCombo((c) => {
-        const next = c + ids.length
-        if (next >= 20 && tierRef.current < 3) { tierRef.current = 3; audio.combo(3); onCallout?.('legend') }
-        else if (next >= 10 && tierRef.current < 2) { tierRef.current = 2; audio.combo(2); onCallout?.('storm') }
-        else if (next >= 5 && tierRef.current < 1) { tierRef.current = 1; audio.combo(1); onCallout?.('hotStreak') }
-        return next
-      })
+      const now = Date.now()
+      if (now - comboTimeRef.current > COMBO_WINDOW) { comboRef.current = 0; tierRef.current = 0 }
+      comboRef.current += ids.length
+      comboTimeRef.current = now
+      setCombo(comboRef.current)
+      if (comboRef.current >= TIERS[2] && tierRef.current < 3) { tierRef.current = 3; audio.combo(3); onCallout?.('legend') }
+      else if (comboRef.current >= TIERS[1] && tierRef.current < 2) { tierRef.current = 2; audio.combo(2); onCallout?.('storm') }
+      else if (comboRef.current >= TIERS[0] && tierRef.current < 1) { tierRef.current = 1; audio.combo(1); onCallout?.('hotStreak') }
     } else {
-      audio.tap()
-      setCombo((c) => Math.max(0, c - 1))
+      // Wild swings now break the chain instead of merely ticking it down.
+      audio.hurt()
+      mistakesRef.current += 1
+      setMistakes(mistakesRef.current)
+      breakCombo('wrong-scoop')
     }
   }
 
   const doWave = () => {
     if (done) return
     const p = posRef.current
-    if (FRIENDLY_DOG_AT.some((at) => Math.abs(at - p) < 7) && !waved.includes(Math.floor(p / 10))) {
+    const dogIndex = FRIENDLY_DOG_AT.findIndex((at, i) => Math.abs(at - p) < 3.5 && !wavedRef.current.includes(i))
+    if (dogIndex >= 0) {
       audio.dog()
-      setWaved((w) => [...w, Math.floor(p / 10)])
-      setCombo((c) => c + (char.perkEffect.waveTips ? 4 : 2))
+      wavedRef.current = [...wavedRef.current, dogIndex]
+      setWaved(wavedRef.current)
+      comboRef.current += 2
+      comboTimeRef.current = Date.now()
+      setCombo(comboRef.current)
     }
   }
 
-  // hazard collision check per frame on position change
+  // hazard collision
   useEffect(() => {
     HAZARDS.forEach((h) => {
-      if (h.lane === lane && Math.abs(h.at - pos) < 2.2 && !bumpRef.current) {
+      if (h.lane === lane && Math.abs(h.at - pos) < 2.4 && !hitRef.current.has(h.id)) {
+        hitRef.current.add(h.id)
         bumpRef.current = true
         setBump(true)
         audio.hurt()
-        onCallout?.('sprinkler')
-        setCombo((c) => Math.max(0, c - 3))
+        setTimeLeft((t) => Math.max(0, t - 1))
+        mistakesRef.current += 1
+        setMistakes(mistakesRef.current)
+        breakCombo('hazard')
+        onCallout?.(h.type === 'dog' ? 'dog' : 'sprinkler')
       }
     })
-  }, [pos, lane])
+  }, [breakCombo, lane, onCallout, pos])
 
-  const visiblePiles = PILES.filter((p) => p.at > pos - Math.max(8,scoopRadius) && p.at < pos + 34 && !cleared.includes(p.id))
-  const visibleHazards = HAZARDS.filter((h) => h.at > pos - 8 && h.at < pos + 34)
+  const visiblePiles = PILES.filter((p) => p.at > pos - Math.max(8, scoopRadius) && p.at < pos + 32 && !cleared.includes(p.id))
+  const visibleHazards = HAZARDS.filter((h) => h.at > pos - 8 && h.at < pos + 32)
   const lanePositions = [22, 50, 78]
   const groundY = at => `${78 - (at - pos) * 2}%`
   const inReach = p => p.lane === lane && Math.abs(p.at - pos) < scoopRadius
   const ready = visiblePiles.some(inReach)
 
+  const steer = (dir) => {
+    laneRef.current = clamp(laneRef.current + dir, 0, 2)
+    setLane(laneRef.current)
+  }
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+  const tier = combo >= TIERS[2] ? 3 : combo >= TIERS[1] ? 2 : combo >= TIERS[0] ? 1 : 0
+
   return (
-    <div className={`route-game ${bump ? 'bumping' : ''}`}>
+    <div className={`route-game ${bump ? 'bumping' : ''} tier-${tier}`}>
       <div className="route-hud">
         <button className="hud-quit" onClick={onQuit}>← Map</button>
         <div className="route-hud-center">
           <div className="progress-track"><div className="progress-fill" style={{ width: `${pos}%` }} /></div>
-          <small>{market} · {urgency ? '🚨 Emergency' : 'Bike route'} · {Math.floor(pos)}%</small>
+          <small>{market} · {urgency ? '🚨 Emergency' : 'Bike route'} · {Math.floor(pos)}% · ⚠ {mistakes}</small>
         </div>
         <div className="route-hud-right">
           <span className="combo">🔥 x{combo}</span>
-          <span className={`timer ${timeLeft <= 10 ? 'low' : ''}`}>⏱ {timeLeft}s</span>
+          <span className={`timer ${timeLeft <= 6 ? 'low' : ''}`}>⏱ {timeLeft}s</span>
         </div>
+      </div>
+
+      <div className="pressure-bar route-pressure">
+        <div className="combo-meter"><span>🔥 CHAIN WINDOW</span><i style={{ width: `${comboClock * 100}%` }} /></div>
+        <div className="mistake-meter">MISS = CHAIN BREAK · HAZARD = -1s</div>
       </div>
 
       <div className="game-viewport">
@@ -194,16 +260,16 @@ export default function RouteGame({ market, characterId, urgency, upgrades, onFi
         </div>
 
         <div className="hud-bottom">
-          <div className="score-plate">🧹 Cleared <strong>{cleared.length}/{PILES.length}</strong></div>
+          <div className="score-plate">🧹 {cleared.length}/{PILES.length} · 🚨 {mistakes} misses</div>
           <div className="controls-hint">
             <span>← → steer</span><span>SPACE scoop</span><span>W wave 🐕</span>
           </div>
         </div>
 
         <div className="mobile-controls">
-          <button onClick={() => { laneRef.current = Math.max(0, laneRef.current - 1); setLane(laneRef.current) }}>◀</button>
+          <button onClick={() => steer(-1)}>◀</button>
           <button className={`scoop-btn ${ready?'ready':''}`} onClick={doScoop}>{ready?'SCOOP NOW!':'SCOOP 🧹'}</button>
-          <button onClick={() => { laneRef.current = Math.min(2, laneRef.current + 1); setLane(laneRef.current) }}>▶</button>
+          <button onClick={() => steer(1)}>▶</button>
           <button onClick={doWave}>WAVE 🐕</button>
         </div>
       </div>
