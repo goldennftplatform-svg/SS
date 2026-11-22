@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { BlockArt } from './BlockArt.jsx'
-import CharacterSprite from './CharacterSprite.jsx'
+import { rideRenderer } from '../game/rideRenderer.js'
 import { characterById } from '../game/engine.js'
 import { audio } from '../audio/chiptune.js'
 
@@ -22,6 +21,13 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
   const keys = useRef({})
   const [started, start] = useState(false)
   const [, frame] = useState(0)
+  const canvas=useRef(null), painter=useRef(null)
+  useEffect(()=>{
+    const draw=rideRenderer(canvas.current,{night:urgency,gaps:GAPS,paws:PAWS,fences:FENCES,opening,length:LENGTH,lift,jersey:char.id==='sir-scoops'?'#39675b':char.color})
+    painter.current=draw;draw(run)
+    const observer=new ResizeObserver(()=>draw(run));observer.observe(canvas.current)
+    return ()=>{observer.disconnect();painter.current=null}
+  },[run,urgency,opening,char])
   const finish = useRef(onFinish); finish.current = onFinish
   const hop = () => { if (started && run.t-run.jump > 1.15) run.jump=run.t }
   useEffect(() => {
@@ -35,9 +41,9 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     }
     const down=e=>key(e,true), up=e=>key(e,false), blur=()=>{keys.current={}}
     window.addEventListener('keydown',down); window.addEventListener('keyup',up); window.addEventListener('blur',blur)
-    let last=performance.now()
-    const id=setInterval(()=>{
-      const now=performance.now(), dt=Math.min(.06,(now-last)/1000); last=now
+    let last=performance.now(), hud=0, id
+    const tick=now=>{
+      const dt=Math.max(0,Math.min(.06,(now-last)/1000)); last=now
       run.t+=dt
       const k=keys.current
       run.x=clamp(run.x+((k.arrowright||k.d?1:0)-(k.arrowleft||k.a?1:0))*dt*2.5)
@@ -60,18 +66,16 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
         if (run.x*fence.side<opening) {run.mistakes++;run.message='Fence hit · take the open side';run.messageUntil=run.t+1;audio.hurt()}
       }
       if (run.distance>=LENGTH) {
-        clearInterval(id)
         finish.current({ points:run.gaps*75+run.badges*50, gaps:run.gaps, badges:run.badges, mistakes:run.mistakes, delay:Math.min(4,run.mistakes) })
-      } else frame(v=>v+1)
-    },16)
-    return ()=>{clearInterval(id);window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',blur)}
+      } else {
+        painter.current?.(run)
+        if(now-hud>=80){frame(v=>v+1);hud=now}
+        id=requestAnimationFrame(tick)
+      }
+    }
+    id=requestAnimationFrame(tick)
+    return ()=>{cancelAnimationFrame(id);window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',blur)}
   },[started,run,speed,opening,clearance])
-  const depth = at => 1-(at-run.distance)/30
-  const project = (at,lane) => {
-    const p=depth(at)**2
-    return {left:`${50+lane*(6+20*p)}%`,top:`${30+58*p}%`,transform:`translate(-50%,-100%) scale(${.3+.9*p})`}
-  }
-  const visible=at=>depth(at)>=0 && depth(at)<=1
   const gap=GAPS[run.gapIndex], eta=(gap-run.distance)/speed
   const fence=FENCES[run.coneIndex], steerNext=fence && fence.at<(gap??Infinity)
   const jumpNow=!steerNext && eta<=.67 && eta>0
@@ -87,21 +91,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     <div className="stop-order"><small>SCUPH DISPATCH · LEG 1/2 · {['Cedar Row','Market Steps','Sound View'][district]}</small>
       <strong>{!started?'Steer past fences. Jump the gaps.':steerNext?`Fence ahead · stay ${fence.side>0?'RIGHT ▶':'◀ LEFT'}`:jumpNow?'Jump now!':gap?`Gap ahead · bonus paw ${side}`:'Customer’s gate ahead'}</strong>
       <span>{!started?'A/D or arrows steer · Space jumps. Each hit costs 1s of yard time (up to 4s).':`Ride: ${run.gaps*75+run.badges*50} pts · Yard delay: ${Math.min(run.mistakes,4)}s`}{record>0 && ` · Job best ${record}`}</span></div>
-    <div className="ride-viewport"><div className="ride-sky"/><div className="ride-sun"/><div className="ride-hills"/>
-      <div className="district-props">{[0,1,2,3,4].map(i=><BlockArt key={i} kind={['pine','market','lighthouse'][district]}/>)}</div>
-      <svg className="ride-road" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M41 30h18l37 70H4z" fill="#40574f" stroke="#31453b" strokeWidth=".7"/>
-        {Array.from({length:8},(_,i)=>Math.ceil(run.distance/4)*4+i*4).filter(visible).map(at=>{const p=depth(at)**2;return <path key={at} d={`M50 ${30+58*p}v${1+2*p}`} stroke="#fff1cd" strokeWidth={.3+p}/>})}
-        {GAPS.filter(visible).map(at=>{const p=depth(at)**2,w=9+31*p;return <g key={at}><path d={`M${50-w} ${30+58*p}h${2*w}`} stroke="#1b282e" strokeWidth={1+3*p}/><path d={`M${50-w} ${31+58*p}h${2*w}`} stroke="#fed171" strokeWidth=".8" strokeDasharray="3 1"/></g>})}
-        {FENCES.filter(f=>visible(f.at)).map(f=>{
-          const p=depth(f.at)**2,y=30+58*p,w=6+20*p,edge=50+f.side*w*opening,end=50-f.side*(9+31*p),h=1+4*p
-          return <g key={f.at}><path d={`M${edge} ${y}v-${h}H${end}v${h}z`} fill="#c36c42" stroke="#263730" strokeWidth=".45"/>
-            <path d={`M${edge} ${y-h*.6}H${end}`} stroke="#fff0b0" strokeWidth={h*.4} strokeDasharray="2 2"/></g>
-        })}
-      </svg>
-      {GAPS.map((at,i)=>visible(at)&&<div key={at} className="brass-paw" style={project(at,PAWS[i])}><b>🐾</b></div>)}
-      {visible(LENGTH)&&<div className="ride-house" style={project(LENGTH,.7)}><BlockArt kind="house" className="cedar-house"/><small>CLIENT GATE</small></div>}
-      <div className="ride-player" style={{left:`${50+26*run.x}%`,transform:`translate(-50%,${-85*lift(run.t-run.jump)}%)`}}><CharacterSprite character={char} pose="ride"/></div>
+    <div className="ride-viewport"><canvas className="courier-scene" ref={canvas} aria-label="South Sound bike ride. Follow dispatch cues to steer and jump."/>
       {run.messageUntil>run.t&&<div className="ride-banner">{run.message}</div>}
       <div className="ride-controls">{!started?<button className="ride-scoop" onClick={()=>start(true)}>🚲 Pedal to {market} →</button>:<>
         {['left','jump','right'].map(dir=>dir==='jump'?<button key={dir} className={`ride-jump ${jumpNow?'lit':''}`} onClick={hop}>↑ Jump</button>:<button key={dir} aria-label={`Steer ${dir}`} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);keys.current['arrow'+dir]=true}} onLostPointerCapture={()=>{keys.current['arrow'+dir]=false}}>{dir==='left'?'◀':'▶'}</button>)}
