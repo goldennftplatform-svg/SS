@@ -29,3 +29,5 @@
 .ride-goal {color:#ffdb87;font:800 clamp(11px,1.6vw,16px) system-ui,sans-serif}
 .ride-controls .ride-jump {background:#9de0d8}
 .ride-controls .ride-jump.lit {background:#ffd269;outline:3px solid #76532b}
+.brass-paw {position:absolute;z-index:6;width:clamp(22px,4vw,42px);padding-bottom:clamp(34px,7vh,72px);pointer-events:none;transform-origin:bottom center}
+.brass-paw svg {display:block;width:100%;filter:drop-shadow(0 2px 1px #26372a80)}

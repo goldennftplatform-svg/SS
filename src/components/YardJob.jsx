@@ -25,24 +25,24 @@ function makeObjects() {
   return { bushes, poops, strips, leaves }
 }
 
-export default function YardJob({ market, characterId, perks = [], upgrades = {}, level = 1, onFinish, onQuit, onCallout }) {
+export default function YardJob({ market, characterId, perks = [], upgrades = {}, level = 1, scoopOnly=false, rush=false, ridePoints=0, onFinish, onQuit, onCallout }) {
   const char = characterById(characterId)
   const hasPerk = useCallback((id) => perks.includes(id), [perks])
   const difficulty = 1 + Math.min(0.4, (level - 1) * 0.06)
   const speed = (34 + (upgrades.bike || 0) * 2.5 + (char.perkEffect.speed || 1) * 4) * (1 + (level - 1) * 0.015)
   const capacity = 3 + (hasPerk('magnet-bag') ? 2 : 0) + Math.min(2, upgrades.bag || 0)
-  const SHIFT = Math.max(32, Math.round((52 + (hasPerk('rally-timer') ? 7 : 0)) / (1 + Math.min(0.25, (level - 1) * 0.04))))
+  const SHIFT = Math.round(((scoopOnly ? rush ? 18 : 25 : 52) + (hasPerk('rally-timer') ? 7 : 0)) / (1 + Math.min(0.25, (level - 1) * 0.04)))
 
-  const [objects, setObjects] = useState(makeObjects)
+  const [objects, setObjects] = useState(()=>{const o=makeObjects();if(scoopOnly)o.poops.forEach(p=>{p.found=true});return o})
   const [player, setPlayer] = useState({ ...TRUCK })
-  const [phaseIndex, setPhaseIndex] = useState(0)
+  const [phaseIndex, setPhaseIndex] = useState(scoopOnly?1:0)
   const [timeLeft, setTimeLeft] = useState(SHIFT)
   const [score, setScore] = useState(0)
   const [combo, setCombo] = useState(0)
   const [comboClock, setComboClock] = useState(0)
   const [carried, setCarried] = useState(0)
   const [mistakes, setMistakes] = useState(0)
-  const [banner, setBanner] = useState('🐾 Ride into targets · dump at the 🛻 · keep the chain alive!')
+  const [banner, setBanner] = useState('Walk to targets · unload at your parked bike')
   const [chaos, setChaos] = useState(null)
   const [moving, setMoving] = useState(false)
   const [popping, setPopping] = useState(false)
@@ -58,7 +58,10 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
   const comboTimeRef = useRef(Date.now())
   const carriedRef = useRef(0)
   const mistakesRef = useRef(0)
-  const phaseRef = useRef(0)
+  const phaseRef = useRef(phaseIndex)
+  const hauled = useRef(0)
+  const phaseTimer = useRef(null)
+  useEffect(()=>()=>clearTimeout(phaseTimer.current),[])
   const phaseLockRef = useRef(false)
   const finishedRef = useRef(false)
   const tierRef = useRef(0)
@@ -131,27 +134,29 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
     const cur = objectsRef.current
     const done = cur.bushes.filter((b) => b.found).length + cur.poops.filter((p) => p.scooped).length +
       cur.strips.filter((s) => s.mowed).length + cur.leaves.filter((l) => l.raked).length
-    const completion = done / TARGETS
+    const completion = scoopOnly ? hauled.current / BUSHES : done / TARGETS
     const timeRatio = timeLeft / SHIFT
     const comboRatio = Math.min(1, comboRef.current / TIERS[2])
     const phases = phaseRef.current / YARD_PHASES.length
     const penalty = Math.min(0.35, mistakesRef.current * 0.07)
     let performance = clamp(completion * 0.5 + phases * 0.08 + timeRatio * 0.1 + comboRatio * 0.17 + 0.18 - penalty, 0, 1)
+    if(scoopOnly) performance=clamp(completion*.88+timeRatio*.16+.05-penalty,0,1)
     if (late) performance *= 0.55
     if (late) { audio.hurt(); onCallout?.('late') }
     else { audio.fanfare(); onCallout?.('onTime') }
-    onFinish({ performance, late, mistakes: mistakesRef.current, character: char, perks, completion })
-  }, [timeLeft, SHIFT, onFinish, char, perks, onCallout])
+    onFinish({ performance, late, mistakes: mistakesRef.current, character: char, perks, completion, delivered:hauled.current })
+  }, [timeLeft, SHIFT, onFinish, char, perks, onCallout, scoopOnly])
 
   const advancePhase = useCallback(() => {
     if (phaseLockRef.current || finishedRef.current) return
     phaseLockRef.current = true
+    if(scoopOnly || phaseRef.current===3) {finish(false);return}
     addScore(40)
     audio.phase()
     onCallout?.('phase')
     flashBanner('✨ STATION CLEAR! +40 · chain carries over!')
     const next = phaseRef.current + 1
-    window.setTimeout(() => {
+    phaseTimer.current=window.setTimeout(() => {
       if (next >= YARD_PHASES.length) finish(false)
       else {
         phaseRef.current = next
@@ -160,11 +165,12 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
         phaseLockRef.current = false
       }
     }, 650)
-  }, [addScore, finish, onCallout, flashBanner])
+  }, [addScore, finish, onCallout, flashBanner,scoopOnly])
 
   const dumpBag = useCallback(() => {
     const n = carriedRef.current
     if (n <= 0 || finishedRef.current) return
+    if (phaseRef.current===1) hauled.current+=n
     carriedRef.current = 0
     setCarried(0)
     addScore(n * 8)
@@ -172,7 +178,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
     setBagFlash(true)
     clearTimeout(bagTimer.current)
     bagTimer.current = window.setTimeout(() => setBagFlash(false), 350)
-    flashBanner(`🛻 HAULED ${n}! +${n * 8} · get back out there`)
+    flashBanner(`🚲 Unloaded ${n} at the bike`)
     if (phaseDone()) advancePhase()
   }, [addScore, advancePhase, flashBanner, phaseDone])
 
@@ -212,7 +218,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
         if (Date.now() - fullWarnRef.current > 1500) {
           fullWarnRef.current = Date.now()
           audio.hurt()
-          flashBanner('🎒 BAG FULL! Ride back to the 🛻 before scooping more')
+          flashBanner('🎒 Bag full! Walk back to the bike to unload.')
         }
         return
       }
@@ -227,7 +233,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
         setCarried(carriedRef.current)
         points = (hasPerk('golden-scoop') ? 50 : 25) * hits.length
         gain = hits.length
-        if (carriedRef.current >= capacity) flashBanner('🎒 BAG FULL! Dump at the 🛻')
+        if (carriedRef.current >= capacity) flashBanner('🎒 Bag full! Unload at the bike.')
       }
     } else if (phase === 2) {
       const hits = cur.strips.filter((o) => !o.mowed && near(p, o, radius))
@@ -250,7 +256,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
         if (Date.now() - fullWarnRef.current > 1500) {
           fullWarnRef.current = Date.now()
           audio.hurt()
-          flashBanner('🍂 ARMS FULL! Ride back to the 🛻')
+          flashBanner('🍂 Arms full! Walk back to the bike.')
         }
         return
       }
@@ -270,7 +276,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
         setCarried(carriedRef.current)
         points = 15 * ids.size
         gain = ids.size
-        if (carriedRef.current >= capacity) flashBanner('🍂 ARMS FULL! Dump at the 🛻')
+        if (carriedRef.current >= capacity) flashBanner('🍂 Arms full! Unload at the bike.')
       }
     }
 
@@ -430,10 +436,10 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
       <div className="yard-hud">
         <button className="hud-quit" onClick={onQuit}>← Map</button><strong>{market}</strong>
         <div className="phase-track">
-          {YARD_PHASES.map((p, i) => <div key={p.id} className={`phase-pill ${i < phaseIndex ? 'done' : i === phaseIndex ? 'active' : ''}`}><span>{p.icon}</span><small>{p.label}</small></div>)}
+          {scoopOnly ? <b>🚲 PARKED · SCOOP {hauled.current}/5</b> : YARD_PHASES.map((p, i) => <div key={p.id} className={`phase-pill ${i < phaseIndex ? 'done' : i === phaseIndex ? 'active' : ''}`}><span>{p.icon}</span><small>{p.label}</small></div>)}
         </div>
         <div className="yard-hud-right">
-          <span className="yard-score">🪙 {score}</span>
+          <span className="yard-score">{ridePoints+hauled.current*200}/1200 pts</span>
           <span className={`timer ${urgent ? 'low' : ''}`}>⏱ {timeLeft}s</span>
         </div>
       </div>
@@ -441,14 +447,14 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
       <div className="departure-bar"><i style={{ width: `${(timeLeft / SHIFT) * 100}%` }} /><span>{urgent ? '⏰ DEPARTURE IMMINENT!' : `NEXT JOB DEPARTS IN ${timeLeft}s · ROUTE SMART`}</span></div>
       <div className="pressure-bar">
         <div className="combo-meter"><span>🔥 CHAIN {combo}</span><i style={{ width: `${comboClock * 100}%` }} /></div>
-        <div className={`bag-meter ${full ? 'full' : ''} ${bagFlash ? 'flash' : ''}`}><span>🎒 {carried}/{capacity}</span><small>{full ? 'DUMP AT TRUCK!' : 'carry limit'}</small></div>
+        <div className={`bag-meter ${full ? 'full' : ''} ${bagFlash ? 'flash' : ''}`}><span>🎒 {carried}/{capacity}</span><small>{full ? 'UNLOAD AT BIKE!' : 'carry limit'}</small></div>
         <div className="mistake-meter">⚠ {mistakes} mistakes</div>
       </div>
 
       <div className="yard-arena">
         <div className="yard-sky" /><div className="yard-sun" /><div className="yard-fence" /><div className="yard-grass" /><div className="yard-house"><BlockArt kind="house"/></div>
-        <div className={`yard-truck ${full ? 'calling' : ''}`} style={{ left: `${TRUCK.x}%`, top: `${TRUCK.y}%` }}><BlockArt kind="truck"/><small>DUMP</small></div>
         <div className="yard-target-field">
+          <div className={`yard-truck ${full ? 'calling' : ''}`} style={{ left: `${TRUCK.x}%`, top: `${TRUCK.y}%` }}><BlockArt kind="bike"/><small>BIKE · UNLOAD</small></div>
           {phase.id === 'find' && objects.bushes.filter((b) => !b.found).map((b) => (
              <div key={b.id} className="yard-obj bush" style={{ left: `${b.x}%`, top: `${b.y}%` }}><BlockArt kind="pine"/><span className="question">?</span></div>
           ))}
@@ -476,7 +482,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
 
           <div className={`yard-player ${moving ? 'moving' : ''} ${popping ? 'popping' : ''}`} style={{ left: `${player.x}%`, top: `${player.y}%`, '--player-color': char.color }}>
             <CharacterSprite character={char} pose="work" />
-            <span className="yard-tool">{full ? '🛻' : tool}</span>
+            <span className="yard-tool">{full ? '🚲' : tool}</span>
           </div>
         </div>
 
@@ -487,7 +493,7 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
 
       <div className="yard-bottom">
         <div className="combo-plate">🔥 <strong>x{combo}</strong> / {TIERS[2]}</div>
-        <div className="yard-hint">WASD / arrows · scoop on contact · return to 🛻 when full · keep moving or the chain dies</div>
+        <div className="yard-hint">Leg 2 · Walk with WASD / arrows. Scoop on contact. Unload at 🚲 to count your haul.</div>
         <div className="perk-strip">{perks.length === 0 ? <span className="no-perks">No perks yet — level up to earn one!</span> : perks.map((id) => <span key={id} className="perk-chip">{id.replace(/-/g, ' ')}</span>)}</div>
       </div>
 

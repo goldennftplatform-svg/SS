@@ -72,21 +72,24 @@ export default function App() {
     audio.select()
     const seen = save.dialogueSeen?.includes('dispatch')
     const lines = [
-      ...(seen ? [] : buildLines('dispatch', { city: market.name, job: market.special })),
-      ...buildLines(jobType === 'yard' ? 'yardStart' : 'routeStart', {}),
+      ...(seen ? [] : buildLines('dispatch', { city: market.name, job: jobType === 'yard' ? 'yard refresh' : 'scoop visit' })),
+      ...buildLines('routeStart', {}),
     ]
     afterDialogue.current = () => {
       setSave((s) => markDialogue(s, 'dispatch'))
-      setScreen(jobType === 'yard' ? 'yard' : 'route')
+      setScreen('route')
     }
     setDialogue({ lines, key: 'dispatch' })
   }
 
   const completeJob = (result, scorer) => {
     const rewards = scorer(result)
-    if (jobConfig.type !== 'yard') {
+    const recordKey = `${jobConfig.city}:${jobConfig.type}`
+    const previousBest = save.routeRecords?.[recordKey] || 0
+    {
       rewards.coins += result.tip
-      rewards.routeCard = `${result.points}/${result.goal} pts · ${result.cleared}/${result.total} curbs · ${result.gaps} gaps cleared · ${result.tip ? `+${result.tip} coins for the on-time target` : result.late ? 'No target bonus: late finish' : 'Score target missed'}`
+      rewards.routeCard = `Ride ${jobConfig.ride.points} + service ${result.points-jobConfig.ride.points} = ${result.points} pts · ${result.delivered}/5 piles hauled · ${result.tip ? `+${result.tip} coins for the 1,200-point target` : result.late ? 'Late service' : 'Target: 1,200 pts'}`
+      rewards.routeCard += ` · ${result.badges}/3 brass paws${!result.late && result.points > previousBest ? ' · New town best!' : previousBest ? ` · Town best: ${previousBest}` : ''}`
     }
     const late = !!result.late
     if (late) {
@@ -112,6 +115,7 @@ export default function App() {
     // Missing the departure window costs a regular, not just a worse grade.
     if (late) next = { ...next, territories: { ...next.territories, [id]: Math.max(0, count(next, id) - 1) } }
     next.lastCity = id
+    if (!late && result.points > previousBest) next.routeRecords = { ...next.routeRecords, [recordKey]: result.points }
     next.streak = !late && rewards.stars >= 2 ? (save.streak || 1) + 1 : 1
     const won = !owned(save, id) && owned(next, id)
     const newMarkets = neighbors(id).filter((i) => !open(save, i) && open(next, i)).map((i) => cities[i].name)
@@ -200,14 +204,25 @@ export default function App() {
       )}
       {screen === 'route' && jobConfig && (
         <RouteGame market={cities[jobConfig.city].name} characterId={save.activeCharacter} urgency={jobConfig.urgency}
+          record={save.routeRecords?.[`${jobConfig.city}:${jobConfig.type}`]}
           upgrades={save.upgrades} level={save.level} onCallout={calloutLine}
-          onFinish={(result) => completeJob(result, scoreRoute)}
+          onFinish={(ride) => { setJobConfig({...jobConfig, ride}); setScreen('gate') }}
           onQuit={() => setScreen('map')} />
       )}
+      {screen === 'gate' && jobConfig && <div className="screen results-screen"><div className="results-card">
+        <small>SCUPH BIKE DISPATCH · LEG 1 COMPLETE</small><h2>Parked at the client’s gate</h2>
+        <p>{jobConfig.ride.points} ride points banked for this visit.</p>
+        <p>Walk over piles to scoop. Return to the parked bike to empty your bag. Haul five piles for 200 points each.{jobConfig.type === 'yard' && ' This refresh also includes finding, mowing and raking.'}</p>
+        <button className="btn btn-primary" onClick={()=>setScreen('yard')}>Dismount & start service →</button>
+      </div></div>}
       {screen === 'yard' && jobConfig && (
         <YardJob market={cities[jobConfig.city].name} characterId={save.activeCharacter} perks={save.perks} upgrades={save.upgrades} level={save.level}
-          onCallout={calloutLine}
-          onFinish={(result) => completeJob(result, scoreYardJob)}
+          scoopOnly={jobConfig.type !== 'yard'} rush={jobConfig.urgency} ridePoints={jobConfig.ride.points} onCallout={calloutLine}
+          onFinish={(result) => {
+            const ride=jobConfig.ride, points=ride.points+result.delivered*200
+            completeJob({...result, points, badges:ride.badges, urgency:jobConfig.urgency, tip:!result.late && points>=1200?25:0,
+              performance:Math.min(1,result.performance*.85+.15*Math.max(0,1-ride.mistakes*.15))},jobConfig.type==='yard'?scoreYardJob:scoreRoute)
+          }}
           onQuit={() => setScreen('map')} />
       )}
       {screen === 'results' && lastRewards && (

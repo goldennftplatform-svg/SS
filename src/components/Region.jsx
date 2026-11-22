@@ -142,7 +142,7 @@ export default function Region({ save, id, select, onJob, onFlyer, onHQ, onShowD
             <strong>+{contract?.reward || 0} 🪙 bonus</strong>
           </div>
 
-          <small>REGIONAL LEDGER</small>
+            <small>🚲 BIKE DISPATCH · RIDE → PARK → SERVICE</small>
           <div className="ledger"><b>{branches.length}/{cities.length} branches</b><b>{save.coins} coins</b></div>
           <p>{owned(save, 19) ? '★ Olympia secured! Fill the remaining districts to own the whole region.' : 'Campaign goal: plant your flag in Olympia.'}</p>
 

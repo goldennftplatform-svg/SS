@@ -38,6 +38,7 @@ function Worker({ ride, color = leaf, pose, id }) {
 export const BlockArt = memo(function BlockArt({ kind, variant = 0, character, pose, className = '', label }) {
   let art
   switch (kind) {
+    case 'bike': art = <><g fill="none" strokeWidth="4"><circle cx="13" cy="44" r="10" stroke={ink}/><circle cx="50" cy="44" r="10" stroke={ink}/><path d="m13 44 12-20 8 20H13l29-14 8 14-9-26h-7" stroke={brass}/></g>{box(5,23,16,10,'#326e60',3)}{box(20,20,11,4,ink,2)}</>;break
     case 'house': art = <Cabin variant={variant}/>; break
     case 'worker': art = <Worker ride={pose === 'ride'} {...{pose}} color={character?.id === 'sir-scoops' ? leaf : character?.color} id={character?.id}/>; break
     case 'pine': art = <>{box(25,41,9,19,'#805c41')}{box(8,31,40,15,'#315f49',7)}{box(14,20,28,14,'#43805a',6)}{box(21,10,15,13,'#64995e',5)}</>; break

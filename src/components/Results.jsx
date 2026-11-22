@@ -7,7 +7,7 @@ export default function Results({ rewards, save, leveledUp, onContinue }) {
     <div className="screen results-screen">
       <div className="results-card">
         {save.activeCharacter === 'sir-scoops' && <ScoopKnight pose="report"/>}
-        <div className="results-banner">{stars === 3 ? 'PERFECT ROUTE!' : stars === 2 ? 'NICE SCOOPING!' : 'ROUTE COMPLETE!'}</div>
+        <div className="results-banner">{rewards.late ? 'SERVICE WINDOW MISSED' : stars === 3 ? 'PERFECT VISIT!' : 'SERVICE COMPLETE!'}</div>
         <div className="stars">{[0, 1, 2].map((i) => <span key={i} className={i < stars ? 'lit' : ''}>⭐</span>)}</div>
         <p className="results-sub">{rewards.dispatch}</p>
         {rewards.routeCard && <p className="route-receipt">{rewards.routeCard}</p>}

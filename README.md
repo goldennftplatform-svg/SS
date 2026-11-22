@@ -35,15 +35,15 @@ No backend, no accounts, no wallet needed to play. Progress saves in `localStora
 ## What's in the prototype (v1)
 
 - **Title → HQ hub → Route → Results → Upgrade** full loop
-- **🚲 Bike Route — Street Ride:** a rolling-horizon, paperboy-style run down a curbside street. Watch the **house mini-map** up top, scoop the glowing houses on either side before you pass them, wave at good dogs and dodge sprinklers, cones and grumpy dogs. Reach the end before departure.
+- **🚲 Bike Route:** ride to one client's gate, park, and clean five piles on foot. Unload at the bike to count the haul.
 - **🚨 Rush Cleanup:** the same street ride at night — 2× rewards, faster bike, tighter clock.
-- **🏡 Yard Job — Action Sprint:** your knight rides the lawn (WASD/arrows or the touch pad) and **collects on contact** across four phases — **Find** hidden piles → **Scoop** them → **Mow** the grass → **Rake** the leaves. Bags hold only 3 items: ride back to the 🛻 to dump before you can keep working. The **chain** dies if you idle, miss, or get hit, so route smart and keep moving through sprinklers, loose dogs and leaf gusts. Tight tiers (`HOT STREAK` → `SCUPH STORM` → `LEGENDARY SCŪPHR`) need real skill. Miss the departure clock and you are **late**: half pay, lost reputation and a lost regular.
+- **🏡 Yard refresh:** after the ride, find and scoop hidden piles, mow and rake. Return to the bike when the bag fills.
 - **Roguelite perk cards:** every level-up offers 3 of 8 perks (Bigger Haul, Turbo Mower, Leaf Blower 3000, Golden Scoop, Super Sniffer, Hearth Shield, Rally Timer, Combo Keeper). **Earned, never bought.**
 - **6 characters** with unique perks and unlock levels (Sir Scoops-a-Lot, Hopscotch Hound, Duchess Litterly, Sir Wags-a-Lot, Sir Hearthguard, Captain Sunbeam)
 - **The Upsell Tree:** all 6 real SCUPH services with real prices, unlocked as your reputation grows
 - **Economy:** coins, bones, XP, reputation stars, day streak, franchise revenue, Clash-style HQ upgrades
 - **Story + Business Lessons:** "Your First Route" → "Scūph Franchise"
-- **Responsive:** on-screen scoop/steer/wave buttons for mobile
+- **Responsive:** touch steering, jump button and yard D-pad.
 
 See [`docs/GDD.md`](docs/GDD.md) for the full design.
 
@@ -53,16 +53,12 @@ See [`docs/GDD.md`](docs/GDD.md) for the full design.
 
 | Action | Keyboard | Mobile |
 |---|---|---|
-| Start the bike dispatch | Q to clean house #1 | Scoop left |
+| Start the bike dispatch | Activate Pedal button | Tap Pedal |
 | Steer the auto-pedaling bike | ← → / A D | ◀ ▶ buttons |
-| Scoop left / right (+100 points) | Q / E | Scoop left / right |
 | Jump a striped gap (+75 points) | Space | ↑ Jump |
-| Wave at dog | W / ↑ | WAVE 🐕 button |
-| Pause / quit | HQ button | HQ button |
+| Walk / scoop on contact | WASD / arrows | D-pad |
 
-**Yard Job:** move with **WASD / arrows** (or the on-screen D-pad). Work the four stations on contact, then ride back to the **🛻 DUMP** when the bag meter fills. The **🔥 chain** window is short — every hit, splash or pause breaks it. Tap a loose dog before it bites for bonus points. Watch the departure bar — finish the whole visit before it empties or the client cancels.
-
-**Bike Route:** the mini-map shows every house on the street. Its pile glows while you are in range — hit **Q** for a left-side house or **E** for a right-side one. A wild swing breaks the chain; hazards cost a second. Steering is for dodging, not scooping. Route score rewards cleanliness, combo, dog waves and speed. Yard score rewards completion, chain and time. 3 stars = best rewards + bone(s). A missed departure halves pay, costs reputation and removes a regular.
+**One job ticket:** clear gaps (+75), line up airborne paw badges (+50), and unload piles (+200 each). Finish service on time with 1,200 points for 25 extra coins. The service clock starts when you dismount.
 
 ---
 

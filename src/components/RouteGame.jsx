@@ -1,481 +1,102 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { characterById } from '../game/engine.js'
-import CharacterSprite from './CharacterSprite.jsx'
-import { DispatchSeal, FieldScoop } from './RouteMarks.jsx'
+import React, { useEffect, useRef, useState } from 'react'
 import { BlockArt } from './BlockArt.jsx'
+import CharacterSprite from './CharacterSprite.jsx'
+import { characterById } from '../game/engine.js'
 import { audio } from '../audio/chiptune.js'
 
-const LENGTH = 150
-const BLOCKS = ['Cedar Row', 'Market Steps', 'Sound View']
-const VIEW = 36
-const HORIZON = 30
-const ROAD_TOP = 9
-const ROAD_BOTTOM = 46
-const SCOOP_WINDOW = 4
-const COMBO_WINDOW = 2600
-const TIERS = [4, 8, 12]
-const GAP_SLOTS = [2, 5, 8, 10, 14, 16]
-const atSlot = i => 3 + i * 8.4
-const GAPS = GAP_SLOTS.map(atSlot)
-const GOAL = 1200, CURB_POINTS = 100, GAP_POINTS = 75, BONUS = 25
-const FLIGHT = 950
-const lift = elapsed => elapsed < 0 || elapsed >= FLIGHT ? 0 : 4 * (elapsed / FLIGHT) * (1 - elapsed / FLIGHT)
-const HOUSES = Array.from({ length: 18 }, (_, i) => i).filter(i => !GAP_SLOTS.includes(i)).map((i,id) => ({
-  id,
-  at: atSlot(i),
-  side: [-1,1,-1,-1,1,1][i % 6],
-  dog: i % 5 === 4,
-}))
-const HAZARDS = [
-  { id: 'h1', at: 15, lane: 0, type: 'sprinkler' },
-  { id: 'h2', at: 27, lane: -1, type: 'dog' },
-  { id: 'h3', at: 39, lane: 1, type: 'cone' },
-  { id: 'h4', at: 52, lane: 0, type: 'dog' },
-  { id: 'h5', at: 64, lane: -1, type: 'sprinkler' },
-  { id: 'h6', at: 76, lane: 1, type: 'cone' },
-  { id: 'h7', at: 88, lane: 0, type: 'sprinkler' },
-  { id: 'h8', at: 101, lane: 1, type: 'cone' },
-  { id: 'h9', at: 115, lane: -1, type: 'dog' },
-  { id: 'h10', at: 130, lane: 0, type: 'cone' },
-  { id: 'h11', at: 140, lane: 1, type: 'sprinkler' },
-]
-const WAVE_AT = [24, 58, 86]
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+const LENGTH = 75
+const GAPS = [14, 36, 59]
+const PAWS = [-.7, .7, 0]
+const CONES = [{ at: 24, lane: 0 }, { at: 47, lane: -.75 }, { at: 68, lane: .75 }]
+const lift = t => t > 0 && t < .95 ? 4 * (t/.95) * (1-t/.95) : 0
+const clamp = v => Math.max(-1, Math.min(1,v))
+const progress = d => `${d / LENGTH * 100}%`
 
-export default function RouteGame({ market, characterId, urgency, upgrades, level = 1, onFinish, onQuit, onCallout }) {
+export default function RouteGame({ market, characterId, urgency, upgrades, level, record, onFinish, onQuit }) {
   const char = characterById(characterId)
-  const bikeLevel = upgrades.bike || 0
-  const scoopLevel = upgrades.scoop || 0
-  const difficulty = 1 + Math.min(0.35, (level - 1) * 0.05)
-  const speed = (5 + bikeLevel * 0.35 + scoopLevel * 0.05) * (char.perkEffect.speed || 1) * (urgency ? 1.16 : 1) * difficulty
-  const TOTAL_TIME = Math.round((urgency ? 35 : 41) / (1 + Math.min(0.2, (level - 1) * 0.025)))
-  const scoopWindow = Math.max(3, SCOOP_WINDOW - (level - 1) * 0.12)
-  const [rolling, setRolling] = useState(false)
-  const launch = useRef(-Infinity), gapIndex = useRef(0), clearedGaps = useRef(0)
-  const jump = useCallback(() => {
-    const now = window.performance.now()
-    if (rolling && !doneRef.current && now - launch.current >= FLIGHT + 220) launch.current = now
-  }, [rolling])
-
-  const [distance, setDistance] = useState(0)
-  const [steer, setSteer] = useState(0)
-  const [houses, setHouses] = useState(() => HOUSES.map((h) => ({ ...h, clean: false, missed: false })))
-  const [combo, setCombo] = useState(0)
-  const [comboClock, setComboClock] = useState(0)
-  const [mistakes, setMistakes] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(TOTAL_TIME)
-  const [waved, setWaved] = useState([])
-  const [banner, setBanner] = useState(null)
-  const [bump, setBump] = useState(false)
-  const [done, setDone] = useState(false)
-
-  const distanceRef = useRef(0)
-  const steerRef = useRef(0)
-  const housesRef = useRef(houses)
-  const comboRef = useRef(0)
-  const bestChain = useRef(0)
-  const comboTimeRef = useRef(Date.now())
-  const mistakesRef = useRef(0)
-  const timeRef = useRef(TOTAL_TIME)
-  const wavedRef = useRef([])
-  const keysRef = useRef({})
-  const hitRef = useRef(new Set())
-  const tierRef = useRef(0)
-  const bannerTimer = useRef(null)
-  const bumpTimer = useRef(null)
-  const doneRef = useRef(false)
-
-  timeRef.current = timeLeft
-
-  const flashBanner = useCallback((text, ms = 1600) => {
-    setBanner(text)
-    clearTimeout(bannerTimer.current)
-    bannerTimer.current = window.setTimeout(() => setBanner(null), ms)
-  }, [])
-
-  const breakCombo = useCallback(() => {
-    if (comboRef.current > 0) {
-      comboRef.current = 0
-      tierRef.current = 0
-      setCombo(0)
-      setComboClock(0)
-      onCallout?.('comboLost')
-    }
-    comboTimeRef.current = Date.now()
-  }, [onCallout])
-
-  const finish = useCallback((performance, late = false) => {
-    if (doneRef.current) return
-    doneRef.current = true
-    setDone(true)
-    const points = housesRef.current.filter(h => h.clean).length * CURB_POINTS + clearedGaps.current * GAP_POINTS
-    onFinish({
-      points, goal: GOAL, gaps: clearedGaps.current, tip: !late && points >= GOAL ? BONUS : 0,
-      performance: Math.max(0, Math.min(1, performance)),
-      late,
-      urgency,
-      mistakes: mistakesRef.current,
-      combo: bestChain.current,
-      cleared: housesRef.current.filter((h) => h.clean).length,
-      total: HOUSES.length,
-      character: char,
-    })
-  }, [onFinish, urgency, char])
-
-  const scoop = useCallback((side) => {
-    if (doneRef.current) return
-    if (!rolling && side !== HOUSES[0].side) {
-      flashBanner('First stop is on the LEFT. Press Q or tap Scoop Left.')
-      return
-    }
-    const d = distanceRef.current
-    const target = housesRef.current.find((h) => !h.clean && !h.missed && h.side === side && Math.abs(h.at - d) <= scoopWindow)
-    if (!target) {
-      audio.hurt()
-      mistakesRef.current += 1
-      setMistakes(mistakesRef.current)
-      breakCombo()
-      flashBanner(side < 0 ? '↖️ NOTHING TO SCOOP LEFT! Chain lost' : '↗️ NOTHING TO SCOOP RIGHT! Chain lost')
-      return
-    }
-    const next = housesRef.current.map((h) => h.id === target.id ? { ...h, clean: true } : h)
-    housesRef.current = next
-    setHouses(next)
-    audio.scoop()
-    setRolling(true)
-    const now = Date.now()
-    if (now - comboTimeRef.current > COMBO_WINDOW) { comboRef.current = 0; tierRef.current = 0 }
-    comboRef.current += 1
-    bestChain.current = Math.max(bestChain.current, comboRef.current)
-    comboTimeRef.current = now
-    setCombo(comboRef.current)
-    setComboClock(1)
-    if (comboRef.current >= TIERS[2] && tierRef.current < 3) { tierRef.current = 3; audio.combo(3); onCallout?.('legend') }
-    else if (comboRef.current >= TIERS[1] && tierRef.current < 2) { tierRef.current = 2; audio.combo(2); onCallout?.('storm') }
-    else if (comboRef.current >= TIERS[0] && tierRef.current < 1) { tierRef.current = 1; audio.combo(1); onCallout?.('hotStreak') }
-    flashBanner(`✨ Clean curb #${target.id + 1} · +${CURB_POINTS} pts`, 800)
-  }, [breakCombo, flashBanner, onCallout, scoopWindow, rolling])
-
-  const wave = useCallback(() => {
-    if (doneRef.current) return
-    const d = distanceRef.current
-    const idx = WAVE_AT.findIndex((at, i) => Math.abs(at - d) < 3.5 && !wavedRef.current.includes(i))
-    if (idx < 0) return
-    wavedRef.current = [...wavedRef.current, idx]
-    setWaved(wavedRef.current)
-    comboRef.current += 1
-    bestChain.current = Math.max(bestChain.current, comboRef.current)
-    comboTimeRef.current = Date.now()
-    setCombo(comboRef.current)
-    setComboClock(1)
-    audio.dog()
-    flashBanner('🐕 GOOD DOG! Chain +1')
-  }, [flashBanner])
-
-  // ride loop: steering, rolling road, curb targets, hazards, scoring
+  const speed = (urgency ? 6.4 : 5.2) + Math.min(1.8,(level-1)*.08 + (upgrades.bike || 0)*.22)
+  const run = useRef({ distance:0, x:0, t:0, jump:-10, gaps:0, badges:0, mistakes:0, gapIndex:0, coneIndex:0, message:'' }).current
+  const keys = useRef({})
+  const [started, start] = useState(false)
+  const [, frame] = useState(0)
+  const finish = useRef(onFinish); finish.current = onFinish
+  const hop = () => { if (started && run.t-run.jump > 1.15) run.jump=run.t }
   useEffect(() => {
-    if (done || !rolling) return
-    let last = performance.now()
-    const id = setInterval(() => {
-      const now = performance.now()
-      const dt = Math.min(0.05, (now - last) / 1000); last = now
-      const k = keysRef.current
-      const dir = (k.right ? 1 : 0) - (k.left ? 1 : 0)
-      if (dir) {
-        steerRef.current = clamp(steerRef.current + dir * 2.4 * dt, -1, 1)
-        setSteer(steerRef.current)
-      }
-
-      const finalBoost = distanceRef.current > 82 && char.perkEffect.finalSpeed ? char.perkEffect.finalSpeed : 1
-      const next = Math.min(LENGTH, distanceRef.current + speed * finalBoost * dt)
-      distanceRef.current = next
-      setDistance(next)
-      const height = lift(now - launch.current)
-      if (next >= GAPS[gapIndex.current]) {
-        gapIndex.current++
-        if (height >= 0.38) {
-          clearedGaps.current++
+    if (!started) return
+    const key = (e, down) => {
+      const k = e.key.toLowerCase()
+      if (!['arrowleft','arrowright','a','d',' '].includes(k)) return
+      e.preventDefault()
+      if (k === ' ' && down && !e.repeat && run.t-run.jump > 1.15) run.jump=run.t
+      keys.current[k]=down
+    }
+    const down=e=>key(e,true), up=e=>key(e,false), blur=()=>{keys.current={}}
+    window.addEventListener('keydown',down); window.addEventListener('keyup',up); window.addEventListener('blur',blur)
+    let last=performance.now()
+    const id=setInterval(()=>{
+      const now=performance.now(), dt=Math.min(.06,(now-last)/1000); last=now
+      run.t+=dt
+      const k=keys.current
+      run.x=clamp(run.x+((k.arrowright||k.d?1:0)-(k.arrowleft||k.a?1:0))*dt*2.5)
+      run.distance+=dt*speed
+      const height=lift(run.t-run.jump)
+      if (run.distance>=GAPS[run.gapIndex]) {
+        const lane=PAWS[run.gapIndex++]
+        if (height>.35) {
+          run.gaps++
+          const paw=height>.65 && Math.abs(lane-run.x)<.28
+          if (paw) run.badges++
+          run.message=paw?'Brass paw! +125 ride points':'Gap cleared! +75 ride points'
           audio.coin()
-          flashBanner(`Gap cleared! +${GAP_POINTS} pts`, 900)
-        } else {
-          audio.hurt()
-          mistakesRef.current++
-          setMistakes(mistakesRef.current)
-          setTimeLeft(t => Math.max(0, t - 1))
-          breakCombo()
-          flashBanner('Caught the gap · −1s. Jump at the gold stripe.', 1000)
-        }
+        } else { run.mistakes++; run.message='Clipped the gap · jump a little earlier'; audio.hurt() }
+        run.messageUntil=run.t+1.1
       }
-
-      if (comboRef.current > 0) {
-        const left = 1 - (Date.now() - comboTimeRef.current) / COMBO_WINDOW
-        setComboClock(Math.max(0, left))
-        if (left <= 0) breakCombo()
+      const cone=CONES[run.coneIndex]
+      if (cone && run.distance>=cone.at) {
+        run.coneIndex++
+        if (Math.abs(run.x-cone.lane)<.32 && height<.35) {run.mistakes++;run.message='Cone hit · steer or hop';run.messageUntil=run.t+1;audio.hurt()}
       }
-
-      let changed = false
-      HOUSES.forEach((h) => {
-        const state = housesRef.current[h.id]
-        if (!state.clean && !state.missed && next > h.at + scoopWindow * 0.35) {
-          housesRef.current[h.id] = { ...state, missed: true }
-          changed = true
-          mistakesRef.current += 1
-          breakCombo()
-          flashBanner(`🏠 HOUSE #${h.id + 1} MISSED! Chain lost`)
-        }
-      })
-      if (changed) { setHouses([...housesRef.current]); setMistakes(mistakesRef.current) }
-
-      HAZARDS.forEach((h) => {
-        if (hitRef.current.has(h.id)) return
-        if (Math.abs(next - h.at) < 1.7 && Math.abs(steerRef.current - h.lane) < 0.42 && !(h.type === 'cone' && height > .38)) {
-          hitRef.current.add(h.id)
-          setBump(true)
-          clearTimeout(bumpTimer.current)
-          bumpTimer.current = window.setTimeout(() => setBump(false), 260)
-          audio.hurt()
-          setTimeLeft((t) => Math.max(0, t - 1))
-          mistakesRef.current += 1
-          setMistakes(mistakesRef.current)
-          breakCombo()
-          onCallout?.(h.type === 'dog' ? 'dog' : 'sprinkler')
-          flashBanner(h.type === 'dog' ? '🐶 ROAD DOG! -1s · chain lost' : '💦 HAZARD HIT! -1s · chain lost')
-        }
-      })
-
-      if (next >= LENGTH) {
-        const clean = housesRef.current.filter((h) => h.clean).length
-        const cleanRatio = clean / HOUSES.length
-        const timeRatio = timeRef.current / TOTAL_TIME
-        const comboRatio = Math.min(1, bestChain.current / TIERS[2])
-        const waveRatio = Math.min(1, wavedRef.current.length / WAVE_AT.length)
-        const penalty = Math.min(0.3, mistakesRef.current * 0.05)
-        const performance = cleanRatio * 0.58 + timeRatio * 0.1 + comboRatio * 0.2 + waveRatio * 0.05 + 0.12 - penalty
-        finish(performance)
-      }
-    }, 16)
-    return () => clearInterval(id)
-  }, [breakCombo, char, done, finish, flashBanner, onCallout, scoopWindow, speed, TOTAL_TIME, rolling])
-
-  // departure countdown
-  useEffect(() => {
-    if (done || !rolling) return
-    const id = setInterval(() => setTimeLeft((t) => Math.max(0, t - 1)), 1000)
-    return () => clearInterval(id)
-  }, [done, rolling])
-  useEffect(() => { if (timeLeft <= 0) finish(0, true) }, [timeLeft, finish])
-
-  // Steering and scooping stay independent of the timed hop.
-  useEffect(() => {
-    if (done) return
-    const down = (e) => {
-      const key = e.key
-      if (e.repeat && ['q','e',' ','w','arrowup'].includes(key.toLowerCase())) { e.preventDefault(); return }
-      if (key === 'ArrowLeft' || key === 'a' || key === 'A') keysRef.current.left = true
-      if (key === 'ArrowRight' || key === 'd' || key === 'D') keysRef.current.right = true
-      if (key === 'q' || key === 'Q') scoop(-1)
-      if (key === 'e' || key === 'E') scoop(1)
-      if (key === ' ') { e.preventDefault(); jump() }
-      if (key === 'w' || key === 'W' || key === 'ArrowUp') { e.preventDefault(); wave() }
-    }
-    const up = (e) => {
-      const key = e.key
-      if (key === 'ArrowLeft' || key === 'a' || key === 'A') keysRef.current.left = false
-      if (key === 'ArrowRight' || key === 'd' || key === 'D') keysRef.current.right = false
-    }
-    window.addEventListener('keydown', down)
-    window.addEventListener('keyup', up)
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
-  }, [done, scoop, wave, jump])
-
-  useEffect(() => {
-    if (combo >= TIERS[2] && tierRef.current < 3) { tierRef.current = 3; audio.combo(3); onCallout?.('legend') }
-    else if (combo >= TIERS[1] && tierRef.current < 2) { tierRef.current = 2; audio.combo(2); onCallout?.('storm') }
-    else if (combo >= TIERS[0] && tierRef.current < 1) { tierRef.current = 1; audio.combo(1); onCallout?.('hotStreak') }
-  }, [combo, onCallout])
-
-  useEffect(() => () => { clearTimeout(bannerTimer.current); clearTimeout(bumpTimer.current) }, [])
-
-  const project = (at) => {
-    const depth = at - distance
-    if (depth < -3 || depth > VIEW) return null
-    const t = clamp(1 - Math.max(0, depth) / VIEW, 0, 1)
-    const p = Math.pow(t, 1.7)
-    return {
-      y: HORIZON + (100 - HORIZON) * p,
-      scale: 0.3 + t,
-      half: ROAD_TOP + (ROAD_BOTTOM - ROAD_TOP) * p,
-      t,
-    }
+      if (run.distance>=LENGTH) {
+        clearInterval(id)
+        finish.current({ points:run.gaps*75+run.badges*50, gaps:run.gaps, badges:run.badges, mistakes:run.mistakes })
+      } else frame(v=>v+1)
+    },16)
+    return ()=>{clearInterval(id);window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',blur)}
+  },[started,run,speed])
+  const depth = at => 1-(at-run.distance)/30
+  const project = (at,lane) => {
+    const p=depth(at)**2
+    return {left:`${50+lane*(6+20*p)}%`,top:`${30+58*p}%`,transform:`translate(-50%,-100%) scale(${.3+.9*p})`}
   }
-
-  const dashStep = 6
-  const dashStart = Math.floor(distance / dashStep) * dashStep
-  const dashes = []
-  for (let w = dashStart + dashStep; w < distance + VIEW; w += dashStep) {
-    const pr = project(w)
-    if (pr) dashes.push(pr)
-  }
-
-  const cleanCount = houses.filter((h) => h.clean).length
-  const nextStop = houses.find(h => !h.clean && !h.missed)
-  const ready = nextStop && Math.abs(nextStop.at - distance) <= scoopWindow
-  const sideName = nextStop?.side === -1 ? 'LEFT' : 'RIGHT'
-  const district = Math.min(2, Math.floor(distance / 50))
-  const nextGap = GAPS[gapIndex.current]
-  const gapNext = nextGap !== undefined && (!nextStop || nextGap < nextStop.at)
-  const gapETA = (nextGap - distance) / (speed * (distance > 82 ? char.perkEffect.finalSpeed || 1 : 1))
-  const jumpNow = gapNext && gapETA <= .74
-  const altitude = lift(window.performance.now() - launch.current)
-  const points = cleanCount * CURB_POINTS + clearedGaps.current * GAP_POINTS
-  const progress = distance / LENGTH * 100
-  const tier = combo >= TIERS[2] ? 3 : combo >= TIERS[1] ? 2 : combo >= TIERS[0] ? 1 : 0
-  const hold = (key, down) => { keysRef.current[key] = down }
-
-  return (
-    <div className={`ride-game block-${district} ${urgency ? 'urgent' : ''} tier-${tier} ${bump ? 'bumping' : ''}`}>
-      <div className="ride-hud">
-        <button className="hud-quit" onClick={onQuit}>← Map</button>
-        <strong>{market}</strong>
-        <span className="ride-mode">{urgency ? '🚨 RUSH CLEANUP' : '🚲 STREET ROUTE'}</span>
-        <div className="ride-hud-right">
-          <span className="ride-chain">🔥 x{combo}<i style={{ width: `${comboClock * 100}%` }} /></span>
-          <span className={`timer ${timeLeft <= 6 ? 'low' : ''}`}>⏱ {timeLeft}s</span>
-        </div>
-      </div>
-
-      <div className="ride-minimap" aria-label="Route house tracker">
-        <div className="ride-mini-track">
-          <i className="ride-mini-fill" style={{ width: `${progress}%` }} />
-          {GAPS.map((at,i) => <span aria-hidden="true" key={at} style={{position:'absolute',left:`${at/LENGTH*100}%`,top:'33%',color:i < gapIndex.current?'#899f94':'#ffce65',font:'bold 10px monospace'}}>∧</span>)}
-          {houses.map((h) => (
-            <span key={h.id}
-              className={`ride-mini-house ${h.clean ? 'clean' : ''} ${h.missed ? 'missed' : ''} ${!h.clean && !h.missed && Math.abs(h.at - distance) <= scoopWindow ? 'active' : ''}`}
-               style={{ left: `${h.at / LENGTH * 100}%`, top: h.side < 0 ? '18%' : '82%' }}>
-               {h.clean ? <DispatchSeal /> : h.missed ? '❌' : '🏠'}
-            </span>
-          ))}
-          <b className="ride-mini-bike" style={{ left: `${progress}%` }}>🚲</b>
-        </div>
-        <div className="ride-mini-meta">
-          <span>🏠 {cleanCount}/{HOUSES.length} cleaned</span>
-          <span>{clearedGaps.current}/{GAPS.length} gaps cleared</span>
-          <span>⚠ {mistakes} mistakes</span>
-          <span>🐕 {waved.length}/{WAVE_AT.length}</span>
-        </div>
-      </div>
-
-      <div className={`stop-order ${ready ? 'ready' : ''}`}>
-        <small>SCUPH DISPATCH · BLOCK {district + 1}/3 · {BLOCKS[district]}</small>
-        <b className="ride-goal">{points} / {GOAL} pts · {points >= GOAL ? 'Finish on time to collect' : 'On-time target'}: +{BONUS} 🪙</b>
-        <strong>{!rolling ? 'First pickup: scoop LEFT to start.' : gapNext ? (jumpNow ? 'JUMP NOW · clear the gap!' : 'Gap ahead · get ready to jump') : nextStop ? `${ready ? 'SCOOP NOW' : 'UP NEXT'} · #${nextStop.id + 1} ${sideName}` : 'Ride to the finish!'}</strong>
-        <span>{!rolling ? 'Q or Scoop left. Each curb = 100 pts. Each jump across a gap = 75.' : gapNext ? 'Space or Jump at the gold stripe · +75 pts' : ready ? `Press ${nextStop.side < 0 ? 'Q' : 'E'} or tap Scoop ${sideName} · +100 pts` : 'The bike pedals itself. Steer around obstacles.'}</span>
-      </div>
-      <div className="ride-viewport">
-        <div className="ride-sky" style={{ backgroundPositionX: `${-distance * 2}px` }} />
-        <div className={`ride-sun ${urgency ? 'moon' : ''}`} />
-        <div className="ride-hills" style={{ backgroundPositionX: `${-distance * 3}px` }} />
-        <div className="ride-trees" style={{ backgroundPositionX: `${-distance * 6}px` }} />
-        <div className="district-props" aria-hidden="true">{[0,1,2,3,4].map((v) => <BlockArt key={v} kind={['pine','market','lighthouse'][district]} />)}</div>
-
-        <svg className="ride-road" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="rideRoad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6b7c70" />
-              <stop offset="100%" stopColor="#3f5147" />
-            </linearGradient>
-          </defs>
-          <polygon points={`${50 - ROAD_TOP} ${HORIZON}, ${50 + ROAD_TOP} ${HORIZON}, ${50 + ROAD_BOTTOM} 100, ${50 - ROAD_BOTTOM} 100`}
-            fill="url(#rideRoad)" stroke="#28382f" strokeWidth="0.6" />
-          {dashes.map((pr, i) => (
-            <g key={i}>
-              <line x1={50 - pr.half * 0.5} y1={pr.y} x2={50 - pr.half * 0.5} y2={pr.y + 3 * pr.scale}
-                stroke="#fff6df" strokeWidth={0.5 * pr.scale} opacity=".65" />
-              <line x1={50 + pr.half * 0.5} y1={pr.y} x2={50 + pr.half * 0.5} y2={pr.y + 3 * pr.scale}
-                stroke="#fff6df" strokeWidth={0.5 * pr.scale} opacity=".65" />
-            </g>
-          ))}
-          {GAPS.slice(gapIndex.current).map(at => {
-            const pr = project(at)
-            if (!pr) return null
-            // The contact line meets the wheels at 88% of the viewport.
-            const y = HORIZON + (pr.y - HORIZON) * 58 / 70
-            const half = ROAD_TOP + (pr.half - ROAD_TOP) * 58 / 70
-            return <g key={at}><path d={`M${50-half} ${y}h${2*half}`} stroke="#202c33" strokeWidth={4*pr.t+.5}/>
-              <path d={`M${50-half} ${y+2*pr.t}h${2*half}`} stroke="#ffca60" strokeDasharray="3 1" strokeWidth={pr.t+.35}/></g>
-          })}
-        </svg>
-
-        {houses.slice().reverse().map((h) => {
-          const pr = project(h.at)
-          if (!pr) return null
-          const x = 50 + h.side * (pr.half + 7 * pr.t)
-          const targetX = 50 + h.side * pr.half * 0.86
-          const active = !h.clean && !h.missed && Math.abs(h.at - distance) <= scoopWindow
-          return (
-            <React.Fragment key={h.id}>
-              <div className={`ride-house ${h.clean ? 'clean' : ''} ${h.missed ? 'missed' : ''} ${active ? 'active' : ''}`}
-                style={{ left: `${x}%`, top: `${pr.y}%`, transform: `translate(-50%,-100%) scale(${pr.scale})` }}>
-                 <BlockArt kind="house" className="cedar-house" variant={h.id}/><small>#{h.id + 1}{h.clean && <DispatchSeal />}</small>
-              </div>
-              {!h.clean && (
-                <div className={`ride-target ${active ? 'active' : ''} ${h.missed ? 'missed' : ''}`}
-                  style={{ left: `${targetX}%`, top: `${pr.y}%`, transform: `translate(-50%,-50%) scale(${pr.scale})` }}>
-                  <BlockArt kind="pile"/>{active && <b>{h.side < 0 ? 'Q ◀' : '▶ E'}</b>}
-                </div>
-              )}
-              {h.dog && !h.clean && (
-                <div className="ride-house-dog" style={{ left: `${x + h.side * 6}%`, top: `${pr.y}%`, transform: `translate(-50%,-50%) scale(${pr.scale})` }}>🐕</div>
-              )}
-            </React.Fragment>
-          )
-        })}
-
-        {HAZARDS.slice().reverse().map((h) => {
-          const pr = project(h.at)
-          if (!pr || hitRef.current.has(h.id)) return null
-          return (
-            <div key={h.id} className={`ride-hazard ${h.type}`}
-              style={{ left: `${50 + h.lane * pr.half * 0.5}%`, top: `${pr.y}%`, transform: `translate(-50%,-50%) scale(${pr.scale})` }}>
-              {h.type === 'sprinkler' ? '💦' : h.type === 'dog' ? '🐶' : <BlockArt kind="cone"/>}
-            </div>
-          )
-        })}
-
-        {WAVE_AT.map((at, i) => {
-          const pr = project(at)
-          if (!pr || waved.includes(i)) return null
-          const side = i % 2 === 0 ? -1 : 1
-          return (
-            <div key={i} className="ride-friendly-dog"
-              style={{ left: `${50 + side * (pr.half + 4 * pr.t)}%`, top: `${pr.y}%`, transform: `translate(-50%,-50%) scale(${pr.scale})` }}>
-              🐕
-            </div>
-          )
-        })}
-
-        <div className={`ride-player ${bump ? 'bump' : ''}`}
-          style={{ left: `${50 + steer * 26}%`, transform: `translate(-50%,${-altitude * 85}%) rotate(${steer * 8 - altitude * 12}deg)` }}>
-          <CharacterSprite character={char} pose="ride" />
-          <span className="ride-broom"><FieldScoop /></span>
-        </div>
-
-        {banner && <div className="ride-banner">{banner}</div>}
-
-        <div className="ride-bottom">
-          <div className="ride-score-plate">🧹 {cleanCount}/{HOUSES.length} · 🔥 x{combo}</div>
-          <div className="ride-hint"><span>◀ ▶ steer</span><span>Q left · E right scoop</span><span>Space jumps gaps</span><span>W wave 🐕</span></div>
-        </div>
-
-        <div className="ride-controls">
-          <button onPointerDown={() => hold('left', true)} onPointerUp={() => hold('left', false)} onPointerLeave={() => hold('left', false)}>◀</button>
-          <button className={`ride-scoop ${ready && nextStop.side < 0 ? 'lit' : ''}`} aria-label="Scoop left" onClick={() => scoop(-1)}>◀ Scoop left</button>
-          <button className={`ride-scoop ${ready && nextStop.side > 0 ? 'lit' : ''}`} aria-label="Scoop right" onClick={() => scoop(1)}>Scoop right ▶</button>
-          <button onPointerDown={() => hold('right', true)} onPointerUp={() => hold('right', false)} onPointerLeave={() => hold('right', false)}>▶</button>
-          <button className={`ride-jump ${jumpNow ? 'lit' : ''}`} onClick={jump}>↑ Jump</button>
-          <button className="ride-wave" onPointerDown={wave} aria-label="Wave at dog">🐕</button>
-        </div>
-      </div>
+  const visible=at=>depth(at)>=0 && depth(at)<=1
+  const gap=GAPS[run.gapIndex], eta=(gap-run.distance)/speed
+  const side=['left','right','center'][run.gapIndex]
+  const district=Math.min(2,Math.floor(run.distance/25))
+  return <div className={`ride-game block-${district} ${urgency?'urgent':''}`}>
+    <div className="ride-hud"><button className="hud-quit" onClick={onQuit}>← Map</button><strong>{market}</strong><span className="ride-hud-right">🚲 Ride → 🧹 Service</span></div>
+    <div className="ride-minimap"><div className="ride-mini-track">
+      <i className="ride-mini-fill" style={{width:progress(run.distance)}}/>
+      {GAPS.map(at=><span key={at} className="ride-mini-house" style={{left:progress(at)}}>∧</span>)}
+      <span className="ride-mini-house" style={{left:'98%'}}>🏡</span><b className="ride-mini-bike" style={{left:progress(run.distance)}}>🚲</b>
+    </div></div>
+    <div className="stop-order"><small>SCUPH DISPATCH · LEG 1/2 · {['Cedar Row','Market Steps','Sound View'][district]}</small>
+      <strong>{!started?'Ride to the customer’s gate':eta<=.76 && eta>0?'Jump now!':gap?`Gap ahead · bonus paw ${side}`:'Customer’s gate ahead'}</strong>
+      <span>{!started?'Park at the house, then clean on foot. Steer with A/D or arrows; Space jumps.':`Ride: ${run.gaps*75+run.badges*50} pts · 75 per gap + 50 per paw`}{record>0 && ` · Job best ${record}`}</span></div>
+    <div className="ride-viewport"><div className="ride-sky"/><div className="ride-sun"/><div className="ride-hills"/>
+      <div className="district-props">{[0,1,2,3,4].map(i=><BlockArt key={i} kind={['pine','market','lighthouse'][district]}/>)}</div>
+      <svg className="ride-road" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M41 30h18l37 70H4z" fill="#40574f" stroke="#31453b" strokeWidth=".7"/>
+        {Array.from({length:8},(_,i)=>Math.ceil(run.distance/4)*4+i*4).filter(visible).map(at=>{const p=depth(at)**2;return <path key={at} d={`M50 ${30+58*p}v${1+2*p}`} stroke="#fff1cd" strokeWidth={.3+p}/>})}
+        {GAPS.filter(visible).map(at=>{const p=depth(at)**2,w=9+31*p;return <g key={at}><path d={`M${50-w} ${30+58*p}h${2*w}`} stroke="#1b282e" strokeWidth={1+3*p}/><path d={`M${50-w} ${31+58*p}h${2*w}`} stroke="#fed171" strokeWidth=".8" strokeDasharray="3 1"/></g>})}
+      </svg>
+      {GAPS.map((at,i)=>visible(at)&&<div key={at} className="brass-paw" style={project(at,PAWS[i])}><b>🐾</b></div>)}
+      {CONES.map(c=>visible(c.at)&&<div key={c.at} className="ride-hazard cone" style={project(c.at,c.lane)}><BlockArt kind="cone"/></div>)}
+      {visible(LENGTH)&&<div className="ride-house" style={project(LENGTH,.7)}><BlockArt kind="house" className="cedar-house"/><small>CLIENT GATE</small></div>}
+      <div className="ride-player" style={{left:`${50+26*run.x}%`,transform:`translate(-50%,${-85*lift(run.t-run.jump)}%)`}}><CharacterSprite character={char} pose="ride"/></div>
+      {run.messageUntil>run.t&&<div className="ride-banner">{run.message}</div>}
+      <div className="ride-controls">{!started?<button className="ride-scoop" onClick={()=>start(true)}>🚲 Pedal to {market} →</button>:<>
+        {['left','jump','right'].map(dir=>dir==='jump'?<button key={dir} className={`ride-jump ${eta<=.76&&eta>0?'lit':''}`} onClick={hop}>↑ Jump</button>:<button key={dir} aria-label={`Steer ${dir}`} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);keys.current['arrow'+dir]=true}} onLostPointerCapture={()=>{keys.current['arrow'+dir]=false}}>{dir==='left'?'◀':'▶'}</button>)}
+      </>}</div>
     </div>
-  )
+  </div>
 }

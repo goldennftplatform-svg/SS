@@ -27,7 +27,7 @@ export const SCRIPTS = {
     L('customer', 'Oh! You found it. I was about to get the rake. No rush,Scūphr.'),
   ],
   routeStart: [
-    L('dispatch', 'Bring home 1,200 points before departure for 25 extra coins. Scoop the curbs and jump the striped road gaps. Your bike waits at pickup #1.'),
+    L('dispatch', 'Ride to the client, park, then work the yard on foot. Jump the road gaps for points. Haul five piles back to your bike. Finish on time with 1,200 points for 25 extra coins.'),
   ],
   yardStart: [
     L('customer', 'Bushes, piles, grass, leaves — and my truck is the dump point.'),

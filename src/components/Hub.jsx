@@ -14,7 +14,7 @@ export default function Hub({ save, onMap, onBuyUpgrade, onSelectCharacter, onRe
       <header className="hud">
         <div className="hud-brand">
           <img src="./assets/brand/scuph-logo.png" width="54" height="30" alt="Scūph" />
-          <span>SCUPH SAFARI</span>
+          <span>SCUPH SAFARI · BIKE DEPOT</span>
         </div>
         <div className="hud-stats">
           <span className="stat" title="Level">⭐ Lv {save.level}</span>
@@ -109,7 +109,7 @@ function CrewPanel({ save, onSelectCharacter }) {
             <button key={c.id} disabled={!unlocked} onClick={() => onSelectCharacter(c.id)}
               className={`crew-card ${unlocked ? '' : 'locked'} ${active ? 'selected' : ''}`}
               style={{ '--crew-color': c.color, '--crew-accent': c.accent }}>
-              <div className="crew-sprite"><CharacterSprite character={c} /></div>
+               <div className="crew-sprite"><CharacterSprite character={c} pose="ride" /></div>
               <h3>{c.name}</h3>
               <small>{c.title}</small>
               <p>{c.perk}</p>
