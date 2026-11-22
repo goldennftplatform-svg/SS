@@ -211,13 +211,13 @@ export default function App() {
       )}
       {screen === 'gate' && jobConfig && <div className="screen results-screen"><div className="results-card">
         <small>SCUPH BIKE DISPATCH · LEG 1 COMPLETE</small><h2>Parked at the client’s gate</h2>
-        <p>{jobConfig.ride.points} ride points banked for this visit.</p>
+        <p>{jobConfig.ride.points} ride points · {jobConfig.ride.delay ? `Road delay: ${jobConfig.ride.delay}s less yard time` : 'Clean ride: full yard time'}</p>
         <p>Walk over piles to scoop. Return to the parked bike to empty your bag. Haul five piles for 200 points each.{jobConfig.type === 'yard' && ' This refresh also includes finding, mowing and raking.'}</p>
         <button className="btn btn-primary" onClick={()=>setScreen('yard')}>Dismount & start service →</button>
       </div></div>}
       {screen === 'yard' && jobConfig && (
         <YardJob market={cities[jobConfig.city].name} characterId={save.activeCharacter} perks={save.perks} upgrades={save.upgrades} level={save.level}
-          scoopOnly={jobConfig.type !== 'yard'} rush={jobConfig.urgency} ridePoints={jobConfig.ride.points} onCallout={calloutLine}
+          scoopOnly={jobConfig.type !== 'yard'} rush={jobConfig.urgency} delay={jobConfig.ride.delay} ridePoints={jobConfig.ride.points} onCallout={calloutLine}
           onFinish={(result) => {
             const ride=jobConfig.ride, points=ride.points+result.delivered*200
             completeJob({...result, points, badges:ride.badges, urgency:jobConfig.urgency, tip:!result.late && points>=1200?25:0,

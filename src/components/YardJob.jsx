@@ -25,15 +25,22 @@ function makeObjects() {
   return { bushes, poops, strips, leaves }
 }
 
-export default function YardJob({ market, characterId, perks = [], upgrades = {}, level = 1, scoopOnly=false, rush=false, ridePoints=0, onFinish, onQuit, onCallout }) {
+export default function YardJob({ market, characterId, perks = [], upgrades = {}, level = 1, scoopOnly=false, rush=false, delay=0, ridePoints=0, onFinish, onQuit, onCallout }) {
   const char = characterById(characterId)
   const hasPerk = useCallback((id) => perks.includes(id), [perks])
   const difficulty = 1 + Math.min(0.4, (level - 1) * 0.06)
   const speed = (34 + (upgrades.bike || 0) * 2.5 + (char.perkEffect.speed || 1) * 4) * (1 + (level - 1) * 0.015)
   const capacity = 3 + (hasPerk('magnet-bag') ? 2 : 0) + Math.min(2, upgrades.bag || 0)
-  const SHIFT = Math.round(((scoopOnly ? rush ? 18 : 25 : 52) + (hasPerk('rally-timer') ? 7 : 0)) / (1 + Math.min(0.25, (level - 1) * 0.04)))
+  const SHIFT = Math.round(((scoopOnly ? rush ? 18 : 23 : 52) + (hasPerk('rally-timer') ? 7 : 0)) / (1 + Math.min(0.25, (level - 1) * 0.04))) - delay
 
-  const [objects, setObjects] = useState(()=>{const o=makeObjects();if(scoopOnly)o.poops.forEach(p=>{p.found=true});return o})
+  const [objects, setObjects] = useState(()=>{
+    const o=makeObjects()
+    // Keep each pickup in a different patch; no multi-pile spawn at the bike.
+    if(scoopOnly) [[20,26],[77,27],[48,48],[22,72],[79,70]].forEach(([x,y],i)=>{
+      Object.assign(o.poops[i],{found:true,x:x+rand(-7,7),y:y+rand(-7,7)})
+    })
+    return o
+  })
   const [player, setPlayer] = useState({ ...TRUCK })
   const [phaseIndex, setPhaseIndex] = useState(scoopOnly?1:0)
   const [timeLeft, setTimeLeft] = useState(SHIFT)
