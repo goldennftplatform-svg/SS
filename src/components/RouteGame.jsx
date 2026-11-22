@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { characterById } from '../game/engine.js'
 import CharacterSprite from './CharacterSprite.jsx'
+import { CedarHouse, DispatchSeal, FieldScoop } from './RouteMarks.jsx'
 import { audio } from '../audio/chiptune.js'
 
 const LENGTH = 100
@@ -295,7 +296,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
             <span key={h.id}
               className={`ride-mini-house ${h.clean ? 'clean' : ''} ${h.missed ? 'missed' : ''} ${!h.clean && !h.missed && Math.abs(h.at - distance) <= scoopWindow ? 'active' : ''}`}
               style={{ left: `${h.at}%` }}>
-              {h.clean ? '✅' : h.missed ? '❌' : '🏠'}
+               {h.clean ? <DispatchSeal /> : h.missed ? '❌' : '🏠'}
             </span>
           ))}
           <b className="ride-mini-bike" style={{ left: `${distance}%` }}>🚲</b>
@@ -343,7 +344,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
             <React.Fragment key={h.id}>
               <div className={`ride-house ${h.clean ? 'clean' : ''} ${h.missed ? 'missed' : ''} ${active ? 'active' : ''}`}
                 style={{ left: `${x}%`, top: `${pr.y}%`, transform: `translate(-50%,-100%) scale(${pr.scale})` }}>
-                🏡<small>#{h.id + 1}</small>
+                 <CedarHouse lot={h.id} /><small>#{h.id + 1}{h.clean && <DispatchSeal />}</small>
               </div>
               {!h.clean && (
                 <div className={`ride-target ${active ? 'active' : ''} ${h.missed ? 'missed' : ''}`}
@@ -384,7 +385,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
         <div className={`ride-player ${bump ? 'bump' : ''}`}
           style={{ left: `${50 + steer * 26}%`, transform: `translateX(-50%) rotate(${steer * 8}deg)` }}>
           <CharacterSprite character={char} pose="ride" />
-          <span className="ride-broom">🧹</span>
+          <span className="ride-broom"><FieldScoop /></span>
         </div>
 
         {banner && <div className="ride-banner">{banner}</div>}
@@ -396,8 +397,8 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
 
         <div className="ride-controls">
           <button onPointerDown={() => hold('left', true)} onPointerUp={() => hold('left', false)} onPointerLeave={() => hold('left', false)}>◀</button>
-          <button className="ride-scoop" onPointerDown={() => scoop(-1)}>🧹 LEFT</button>
-          <button className="ride-scoop" onPointerDown={() => scoop(1)}>RIGHT 🧹</button>
+          <button className="ride-scoop" aria-label="Scoop left" onPointerDown={() => scoop(-1)}><FieldScoop /> LEFT</button>
+          <button className="ride-scoop" aria-label="Scoop right" onPointerDown={() => scoop(1)}>RIGHT <FieldScoop /></button>
           <button onPointerDown={() => hold('right', true)} onPointerUp={() => hold('right', false)} onPointerLeave={() => hold('right', false)}>▶</button>
           <button className="ride-wave" onPointerDown={wave}>WAVE 🐕</button>
         </div>

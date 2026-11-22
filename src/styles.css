@@ -364,6 +364,12 @@ button { font-family: inherit; cursor: pointer; }
 }
 .ride-controls .ride-scoop { background: var(--gold); font-family: var(--font-display); font-size: 11px; }
 .ride-controls .ride-wave { background: #7fc6a0; }
+.cedar-house { display: block; width: clamp(48px, 7vw, 88px); height: auto; }
+.ride-house small { position: relative; display: table; margin: -1px auto 0; padding: 2px 5px; border-radius: 3px; color: #fff2cf; background: #23342b; letter-spacing: .05em; }
+.dispatch-seal { display: inline-block; width: 16px; height: 16px; vertical-align: middle; }
+.ride-house .dispatch-seal { position: absolute; left: 92%; top: -4px; }
+.field-scoop { width: 1.4em; height: 1.4em; vertical-align: middle; }
+.ride-broom .field-scoop { width: 30px; height: 30px; }
 .ride-game.tier-1 .ride-viewport { box-shadow: inset 0 0 40px #ffb34755; }
 .ride-game.tier-2 .ride-viewport { box-shadow: inset 0 0 70px #ffd35a88; }
 .ride-game.tier-3 .ride-viewport { box-shadow: inset 0 0 90px #fff3aacc; }
