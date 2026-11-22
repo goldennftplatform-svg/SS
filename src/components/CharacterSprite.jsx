@@ -1,7 +1,8 @@
 import React from 'react'
+import { BlockArt } from './BlockArt.jsx'
 
 // Original vector puppet: the same face, visor and tabard in three silhouettes.
-export function ScoopKnight({ pose = 'ride' }) {
+export function ClassicKnight({ pose = 'ride' }) {
   const ride = pose === 'ride', bow = pose === 'report'
   const ink = '#23342b', brass = '#f1bb52', leaf = '#92bd58', steel = '#adc4b6'
   return <svg className={`scoop-knight knight-${pose}`} viewBox="0 0 200 160" role="img"
@@ -37,7 +38,9 @@ export function ScoopKnight({ pose = 'ride' }) {
   </svg>
 }
 
-export default function CharacterSprite({ character, pose }) {
-  return character?.id === 'sir-scoops' ? <ScoopKnight pose={pose}/> :
-    <span className="character-fallback" aria-label={character?.name}>{character?.sprite || '🐸'}</span>
+export function ScoopKnight({ pose = 'ride' }) {
+  return <BlockArt kind="worker" pose={pose} className={`scoop-knight knight-${pose}`} label="Sir Scoops-a-Lot"/>
+}
+export default function CharacterSprite({ character, pose = 'work' }) {
+  return <BlockArt kind="worker" character={character} pose={pose} className={`scoop-knight knight-${pose}`} label={character?.name}/>
 }

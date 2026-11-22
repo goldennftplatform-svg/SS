@@ -84,6 +84,7 @@ export default function App() {
 
   const completeJob = (result, scorer) => {
     const rewards = scorer(result)
+    if (jobConfig.type !== 'yard') rewards.routeCard = `${result.cleared}/${result.total} curbs cleaned · best chain ×${result.combo}`
     const late = !!result.late
     if (late) {
       rewards.coins = Math.round(rewards.coins * 0.5)

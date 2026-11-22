@@ -1,0 +1,28 @@
+.block-art { overflow: visible; vertical-align: middle; }
+.yard-obj .block-art,.yard-house .block-art,.yard-truck .block-art,.ride-target .block-art,.ride-hazard .block-art { width:1.4em;height:1.4em;display:block }
+.ride-game .ride-mini-track {height:30px;background:linear-gradient(#315648 0 34%,#54635e 34% 66%,#315648 66%);border-radius:2px}
+.ride-mini-house {font-size:clamp(9px,1.5vw,14px)}
+.stop-order {position:relative;z-index:9;padding:6px 14px;background:#1e343a;color:#fff4d2;border-left:7px solid #8ab4ab;display:grid;gap:2px}
+.stop-order small {color:#acd7cb;font:800 10px ui-monospace,monospace;letter-spacing:.09em}
+.stop-order strong {font:900 clamp(15px,2.2vw,24px) system-ui,sans-serif}
+.stop-order span {font:600 12px system-ui,sans-serif}
+.stop-order.ready {border-color:#ffd56b}
+.ride-controls .ride-scoop.lit {background:#e5ff88;outline:3px solid #29473b;box-shadow:0 0 0 5px #e5ff88}
+.ride-target b {display:block;background:#263933;color:#fff3b4;text-align:center;font:900 14px monospace}
+.ride-game .ride-sky {background:linear-gradient(#9ccfd8 0 30%,#8ca870 30% 43%,#669260 43% 100%)}
+.ride-game.block-1 .ride-sky {background:linear-gradient(#f9cfa0 0 30%,#cca77c 30% 43%,#aa8f6a 43%)}
+.ride-game.block-2 .ride-sky {background:linear-gradient(#a3c9de 0 30%,#7ba9ac 30% 43%,#67978e 43%)}
+.ride-game.urgent .ride-sky {background:linear-gradient(#202b48 0 30%,#384b61 30% 43%,#405951 43%)}
+.ride-sun,.yard-sun {border-radius:0}
+.district-props {position:absolute;top:20%;height:12%;inset-inline:1%;display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none}
+.district-props svg {height:80%;width:12%}.district-props svg:nth-child(even) {height:58%}
+.ride-hills {top:19%;height:15%;background:linear-gradient(#4b7862,#5f896f);clip-path:polygon(0 50%,8% 50%,8% 28%,16% 28%,16% 47%,28% 47%,28% 66%,37% 66%,37% 36%,48% 36%,48% 12%,58% 12%,58% 42%,68% 42%,68% 65%,80% 65%,80% 30%,92% 30%,92% 50%,100% 50%,100% 100%,0 100%)}
+.ride-game .ride-controls button,.app .atlas button,.app .crew-card,.app .upgrade-card,.app .results-card,.app .perk-card,.app .btn,.app .map-shell,.app .atlas-layout aside,.app .dlg-box {border-radius:3px;box-shadow:inset 0 2px 0 #ffffff29,0 3px 0 #172731}
+.ride-game .ride-controls button {min-height:42px}
+.route-receipt {padding:.65em;background:#233c38;color:#fff1c7;font-weight:800;border-left:5px solid #d6a34c}
+@media (max-width:560px) {
+  .ride-game .ride-controls {bottom:6px;gap:3px}
+  .ride-game .ride-controls button {padding:4px;flex:1;min-width:0;line-height:1.2}
+  .ride-game .ride-bottom {bottom:55px}
+  .ride-game .ride-banner {white-space:normal;width:max-content;max-width:90%;text-align:center}
+}

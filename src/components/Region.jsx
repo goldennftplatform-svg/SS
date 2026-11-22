@@ -118,7 +118,9 @@ export default function Region({ save, id, select, onJob, onFlyer, onHQ, onShowD
                   {id === n.id && <circle cx={n.x} cy={n.y} r="18" fill="none" stroke="var(--iris)" strokeWidth="3" className="pin-ring" />}
                   {isOpen && !isOwned && <text x={n.x + 20} y={n.y - 16} className="pin-spark">✨</text>}
                   {isOwned && <text x={n.x + 17} y={n.y - 14} className="pin-flag">🚩</text>}
-                  <circle cx={n.x} cy={n.y} r="10" fill={isOwned ? 'var(--mint)' : isOpen ? 'var(--lime)' : 'var(--mist)'} stroke="var(--midnight)" strokeWidth="3" />
+                   <g transform={`translate(${n.x},${n.y})`} fill={isOwned ? 'var(--mint)' : isOpen ? 'var(--lime)' : 'var(--mist)'}>
+                     <path d="M-10-7 0-12 11-7 1-2z"/><path d="M-10-7 1-2v13l-11-5z"/><path d="M1-2 11-7V6L1 11z"/><path d="M1-2 11-7V6L1 11z" fill="#19253a" opacity=".4"/>
+                   </g>
                   <text x={n.x} y={n.y + 4} textAnchor="middle" fill="var(--midnight)" fontSize="12">{isOwned ? '⚑' : n.id === 19 ? '★' : '•'}</text>
                   <circle cx={n.x} cy={n.y} r="13" fill="none" stroke={isOwned ? 'var(--mint)' : 'var(--lime)'} strokeWidth="2.5"
                     strokeDasharray={`${progress * 82} 82`} transform={`rotate(-90 ${n.x} ${n.y})`} opacity={isOpen ? 1 : 0} />

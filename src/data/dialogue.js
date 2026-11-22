@@ -27,8 +27,7 @@ export const SCRIPTS = {
     L('customer', 'Oh! You found it. I was about to get the rake. No rush,Scūphr.'),
   ],
   routeStart: [
-    L('scoops', 'Paperboy style! Ride the curb, read the mini-map, scoop each glowing house before you pass it.'),
-    L('dispatch', 'Q scoops left, E scoops right. Steer around hazards with ◀ ▶. Wild swings break the chain.'),
+    L('dispatch', 'Your manifest: 18 curbs across three blocks. The bike waits at house #1. Scoop left to make your first pickup.'),
   ],
   yardStart: [
     L('customer', 'Bushes, piles, grass, leaves — and my truck is the dump point.'),

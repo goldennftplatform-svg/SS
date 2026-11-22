@@ -10,6 +10,7 @@ export default function Results({ rewards, save, leveledUp, onContinue }) {
         <div className="results-banner">{stars === 3 ? 'PERFECT ROUTE!' : stars === 2 ? 'NICE SCOOPING!' : 'ROUTE COMPLETE!'}</div>
         <div className="stars">{[0, 1, 2].map((i) => <span key={i} className={i < stars ? 'lit' : ''}>⭐</span>)}</div>
         <p className="results-sub">{rewards.dispatch}</p>
+        {rewards.routeCard && <p className="route-receipt">{rewards.routeCard}</p>}
         <div className="rewards-grid">
           <div><span>🪙</span><strong>+{coins}</strong><small>Coins</small></div>
           <div><span>✨</span><strong>+{xp}</strong><small>XP</small></div>

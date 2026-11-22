@@ -1,21 +1,23 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { characterById } from '../game/engine.js'
 import CharacterSprite from './CharacterSprite.jsx'
-import { CedarHouse, DispatchSeal, FieldScoop } from './RouteMarks.jsx'
+import { DispatchSeal, FieldScoop } from './RouteMarks.jsx'
+import { BlockArt } from './BlockArt.jsx'
 import { audio } from '../audio/chiptune.js'
 
-const LENGTH = 100
+const LENGTH = 150
+const BLOCKS = ['Cedar Row', 'Market Steps', 'Sound View']
 const VIEW = 36
 const HORIZON = 30
 const ROAD_TOP = 9
 const ROAD_BOTTOM = 46
-const SCOOP_WINDOW = 9
+const SCOOP_WINDOW = 4
 const COMBO_WINDOW = 2600
 const TIERS = [4, 8, 12]
-const HOUSES = Array.from({ length: 12 }, (_, i) => ({
+const HOUSES = Array.from({ length: 18 }, (_, i) => ({
   id: i,
-  at: 8 + i * 7.4 + (i % 3) * 0.5,
-  side: i % 2 === 0 ? -1 : 1,
+  at: 3 + i * 8.4,
+  side: [-1,1,-1,-1,1,1][i % 6],
   dog: i % 5 === 4,
 }))
 const HAZARDS = [
@@ -26,6 +28,10 @@ const HAZARDS = [
   { id: 'h5', at: 64, lane: -1, type: 'sprinkler' },
   { id: 'h6', at: 76, lane: 1, type: 'cone' },
   { id: 'h7', at: 88, lane: 0, type: 'sprinkler' },
+  { id: 'h8', at: 101, lane: 1, type: 'cone' },
+  { id: 'h9', at: 115, lane: -1, type: 'dog' },
+  { id: 'h10', at: 130, lane: 0, type: 'cone' },
+  { id: 'h11', at: 140, lane: 1, type: 'sprinkler' },
 ]
 const WAVE_AT = [24, 58, 86]
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
@@ -36,8 +42,9 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
   const scoopLevel = upgrades.scoop || 0
   const difficulty = 1 + Math.min(0.35, (level - 1) * 0.05)
   const speed = (5 + bikeLevel * 0.35 + scoopLevel * 0.05) * (char.perkEffect.speed || 1) * (urgency ? 1.16 : 1) * difficulty
-  const TOTAL_TIME = Math.max(18, Math.round((urgency ? 23 : 28) / (1 + Math.min(0.2, (level - 1) * 0.025))))
-  const scoopWindow = Math.max(6, SCOOP_WINDOW - (level - 1) * 0.25)
+  const TOTAL_TIME = Math.round((urgency ? 35 : 41) / (1 + Math.min(0.2, (level - 1) * 0.025)))
+  const scoopWindow = Math.max(3, SCOOP_WINDOW - (level - 1) * 0.12)
+  const [rolling, setRolling] = useState(false)
 
   const [distance, setDistance] = useState(0)
   const [steer, setSteer] = useState(0)
@@ -47,7 +54,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
   const [mistakes, setMistakes] = useState(0)
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME)
   const [waved, setWaved] = useState([])
-  const [banner, setBanner] = useState('🧹 Ride the curb · scoop the glowing houses · dodge the street!')
+  const [banner, setBanner] = useState(null)
   const [bump, setBump] = useState(false)
   const [done, setDone] = useState(false)
 
@@ -55,6 +62,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
   const steerRef = useRef(0)
   const housesRef = useRef(houses)
   const comboRef = useRef(0)
+  const bestChain = useRef(0)
   const comboTimeRef = useRef(Date.now())
   const mistakesRef = useRef(0)
   const timeRef = useRef(TOTAL_TIME)
@@ -94,7 +102,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
       late,
       urgency,
       mistakes: mistakesRef.current,
-      combo: comboRef.current,
+      combo: bestChain.current,
       cleared: housesRef.current.filter((h) => h.clean).length,
       total: HOUSES.length,
       character: char,
@@ -103,6 +111,10 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
 
   const scoop = useCallback((side) => {
     if (doneRef.current) return
+    if (!rolling && side !== HOUSES[0].side) {
+      flashBanner('First stop is on the LEFT. Press Q or tap Scoop Left.')
+      return
+    }
     const d = distanceRef.current
     const target = housesRef.current.find((h) => !h.clean && !h.missed && h.side === side && Math.abs(h.at - d) <= scoopWindow)
     if (!target) {
@@ -117,9 +129,11 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     housesRef.current = next
     setHouses(next)
     audio.scoop()
+    setRolling(true)
     const now = Date.now()
     if (now - comboTimeRef.current > COMBO_WINDOW) { comboRef.current = 0; tierRef.current = 0 }
     comboRef.current += 1
+    bestChain.current = Math.max(bestChain.current, comboRef.current)
     comboTimeRef.current = now
     setCombo(comboRef.current)
     setComboClock(1)
@@ -127,7 +141,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     else if (comboRef.current >= TIERS[1] && tierRef.current < 2) { tierRef.current = 2; audio.combo(2); onCallout?.('storm') }
     else if (comboRef.current >= TIERS[0] && tierRef.current < 1) { tierRef.current = 1; audio.combo(1); onCallout?.('hotStreak') }
     flashBanner(`✨ CLEANED HOUSE #${target.id + 1} · 🔥 x${comboRef.current}`)
-  }, [breakCombo, flashBanner, onCallout, scoopWindow])
+  }, [breakCombo, flashBanner, onCallout, scoopWindow, rolling])
 
   const wave = useCallback(() => {
     if (doneRef.current) return
@@ -137,6 +151,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     wavedRef.current = [...wavedRef.current, idx]
     setWaved(wavedRef.current)
     comboRef.current += 1
+    bestChain.current = Math.max(bestChain.current, comboRef.current)
     comboTimeRef.current = Date.now()
     setCombo(comboRef.current)
     setComboClock(1)
@@ -146,7 +161,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
 
   // ride loop: steering, rolling road, curb targets, hazards, scoring
   useEffect(() => {
-    if (done) return
+    if (done || !rolling) return
     let last = performance.now()
     const id = setInterval(() => {
       const now = performance.now()
@@ -203,7 +218,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
         const clean = housesRef.current.filter((h) => h.clean).length
         const cleanRatio = clean / HOUSES.length
         const timeRatio = timeRef.current / TOTAL_TIME
-        const comboRatio = Math.min(1, comboRef.current / TIERS[2])
+        const comboRatio = Math.min(1, bestChain.current / TIERS[2])
         const waveRatio = Math.min(1, wavedRef.current.length / WAVE_AT.length)
         const penalty = Math.min(0.3, mistakesRef.current * 0.05)
         const performance = cleanRatio * 0.58 + timeRatio * 0.1 + comboRatio * 0.2 + waveRatio * 0.05 + 0.12 - penalty
@@ -211,14 +226,14 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
       }
     }, 16)
     return () => clearInterval(id)
-  }, [breakCombo, char, done, finish, flashBanner, onCallout, scoopWindow, speed, TOTAL_TIME])
+  }, [breakCombo, char, done, finish, flashBanner, onCallout, scoopWindow, speed, TOTAL_TIME, rolling])
 
   // departure countdown
   useEffect(() => {
-    if (done) return
+    if (done || !rolling) return
     const id = setInterval(() => setTimeLeft((t) => Math.max(0, t - 1)), 1000)
     return () => clearInterval(id)
-  }, [done])
+  }, [done, rolling])
   useEffect(() => { if (timeLeft <= 0) finish(0, true) }, [timeLeft, finish])
 
   // keyboard: steer with A/D or arrows, scoop left with Q, right with E, SPACE auto
@@ -226,6 +241,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     if (done) return
     const down = (e) => {
       const key = e.key
+      if (e.repeat && ['q','e',' ','w','arrowup'].includes(key.toLowerCase())) { e.preventDefault(); return }
       if (key === 'ArrowLeft' || key === 'a' || key === 'A') keysRef.current.left = true
       if (key === 'ArrowRight' || key === 'd' || key === 'D') keysRef.current.right = true
       if (key === 'q' || key === 'Q') scoop(-1)
@@ -273,12 +289,17 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
   }
 
   const cleanCount = houses.filter((h) => h.clean).length
+  const nextStop = houses.find(h => !h.clean && !h.missed)
+  const ready = nextStop && Math.abs(nextStop.at - distance) <= scoopWindow
+  const sideName = nextStop?.side === -1 ? 'LEFT' : 'RIGHT'
+  const district = Math.min(2, Math.floor((nextStop?.id ?? 17) / 6))
+  const progress = distance / LENGTH * 100
   const missedCount = houses.filter((h) => h.missed).length
   const tier = combo >= TIERS[2] ? 3 : combo >= TIERS[1] ? 2 : combo >= TIERS[0] ? 1 : 0
   const hold = (key, down) => { keysRef.current[key] = down }
 
   return (
-    <div className={`ride-game ${urgency ? 'urgent' : ''} tier-${tier} ${bump ? 'bumping' : ''}`}>
+    <div className={`ride-game block-${district} ${urgency ? 'urgent' : ''} tier-${tier} ${bump ? 'bumping' : ''}`}>
       <div className="ride-hud">
         <button className="hud-quit" onClick={onQuit}>← Map</button>
         <strong>{market}</strong>
@@ -291,15 +312,15 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
 
       <div className="ride-minimap" aria-label="Route house tracker">
         <div className="ride-mini-track">
-          <i className="ride-mini-fill" style={{ width: `${distance}%` }} />
+          <i className="ride-mini-fill" style={{ width: `${progress}%` }} />
           {houses.map((h) => (
             <span key={h.id}
               className={`ride-mini-house ${h.clean ? 'clean' : ''} ${h.missed ? 'missed' : ''} ${!h.clean && !h.missed && Math.abs(h.at - distance) <= scoopWindow ? 'active' : ''}`}
-              style={{ left: `${h.at}%` }}>
+               style={{ left: `${h.at / LENGTH * 100}%`, top: h.side < 0 ? '18%' : '82%' }}>
                {h.clean ? <DispatchSeal /> : h.missed ? '❌' : '🏠'}
             </span>
           ))}
-          <b className="ride-mini-bike" style={{ left: `${distance}%` }}>🚲</b>
+          <b className="ride-mini-bike" style={{ left: `${progress}%` }}>🚲</b>
         </div>
         <div className="ride-mini-meta">
           <span>🏠 {cleanCount}/{HOUSES.length} cleaned</span>
@@ -309,11 +330,17 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
         </div>
       </div>
 
+      <div className={`stop-order ${ready ? 'ready' : ''}`}>
+        <small>SCUPH DISPATCH · BLOCK {district + 1}/3 · {BLOCKS[district]}</small>
+        <strong>{!rolling ? 'Clean 18 curbs. Start at the left house.' : nextStop ? `${ready ? 'SCOOP NOW' : 'UP NEXT'} · #${nextStop.id + 1} ${sideName}` : 'Last stop passed · ride to the finish'}</strong>
+        <span>{!rolling ? 'Press Q or tap Scoop Left to clean #1 and start the clock.' : ready ? `Press ${nextStop.side < 0 ? 'Q' : 'E'} or tap Scoop ${sideName}.` : 'The bike pedals itself. Steer around obstacles.'}</span>
+      </div>
       <div className="ride-viewport">
         <div className="ride-sky" style={{ backgroundPositionX: `${-distance * 2}px` }} />
         <div className={`ride-sun ${urgency ? 'moon' : ''}`} />
         <div className="ride-hills" style={{ backgroundPositionX: `${-distance * 3}px` }} />
         <div className="ride-trees" style={{ backgroundPositionX: `${-distance * 6}px` }} />
+        <div className="district-props" aria-hidden="true">{[0,1,2,3,4].map((v) => <BlockArt key={v} kind={['pine','market','lighthouse'][district]} />)}</div>
 
         <svg className="ride-road" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           <defs>
@@ -344,12 +371,12 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
             <React.Fragment key={h.id}>
               <div className={`ride-house ${h.clean ? 'clean' : ''} ${h.missed ? 'missed' : ''} ${active ? 'active' : ''}`}
                 style={{ left: `${x}%`, top: `${pr.y}%`, transform: `translate(-50%,-100%) scale(${pr.scale})` }}>
-                 <CedarHouse lot={h.id} /><small>#{h.id + 1}{h.clean && <DispatchSeal />}</small>
+                 <BlockArt kind="house" className="cedar-house" variant={h.id}/><small>#{h.id + 1}{h.clean && <DispatchSeal />}</small>
               </div>
               {!h.clean && (
                 <div className={`ride-target ${active ? 'active' : ''} ${h.missed ? 'missed' : ''}`}
                   style={{ left: `${targetX}%`, top: `${pr.y}%`, transform: `translate(-50%,-50%) scale(${pr.scale})` }}>
-                  💩
+                  <BlockArt kind="pile"/>{active && <b>{h.side < 0 ? 'Q ◀' : '▶ E'}</b>}
                 </div>
               )}
               {h.dog && !h.clean && (
@@ -365,7 +392,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
           return (
             <div key={h.id} className={`ride-hazard ${h.type}`}
               style={{ left: `${50 + h.lane * pr.half * 0.5}%`, top: `${pr.y}%`, transform: `translate(-50%,-50%) scale(${pr.scale})` }}>
-              {h.type === 'sprinkler' ? '💦' : h.type === 'dog' ? '🐶' : '🚧'}
+              {h.type === 'sprinkler' ? '💦' : h.type === 'dog' ? '🐶' : <BlockArt kind="cone"/>}
             </div>
           )
         })}
@@ -397,8 +424,8 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
 
         <div className="ride-controls">
           <button onPointerDown={() => hold('left', true)} onPointerUp={() => hold('left', false)} onPointerLeave={() => hold('left', false)}>◀</button>
-          <button className="ride-scoop" aria-label="Scoop left" onPointerDown={() => scoop(-1)}><FieldScoop /> LEFT</button>
-          <button className="ride-scoop" aria-label="Scoop right" onPointerDown={() => scoop(1)}>RIGHT <FieldScoop /></button>
+          <button className={`ride-scoop ${ready && nextStop.side < 0 ? 'lit' : ''}`} aria-label="Scoop left" onClick={() => scoop(-1)}>◀ Scoop left</button>
+          <button className={`ride-scoop ${ready && nextStop.side > 0 ? 'lit' : ''}`} aria-label="Scoop right" onClick={() => scoop(1)}>Scoop right ▶</button>
           <button onPointerDown={() => hold('right', true)} onPointerUp={() => hold('right', false)} onPointerLeave={() => hold('right', false)}>▶</button>
           <button className="ride-wave" onPointerDown={wave}>WAVE 🐕</button>
         </div>

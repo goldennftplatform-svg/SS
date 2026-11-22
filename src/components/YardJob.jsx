@@ -446,23 +446,23 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
       </div>
 
       <div className="yard-arena">
-        <div className="yard-sky" /><div className="yard-sun" /><div className="yard-fence" /><div className="yard-grass" /><div className="yard-house">🏡</div>
-        <div className={`yard-truck ${full ? 'calling' : ''}`} style={{ left: `${TRUCK.x}%`, top: `${TRUCK.y}%` }}>🛻<small>DUMP</small></div>
+        <div className="yard-sky" /><div className="yard-sun" /><div className="yard-fence" /><div className="yard-grass" /><div className="yard-house"><BlockArt kind="house"/></div>
+        <div className={`yard-truck ${full ? 'calling' : ''}`} style={{ left: `${TRUCK.x}%`, top: `${TRUCK.y}%` }}><BlockArt kind="truck"/><small>DUMP</small></div>
         <div className="yard-target-field">
           {phase.id === 'find' && objects.bushes.filter((b) => !b.found).map((b) => (
-            <div key={b.id} className="yard-obj bush" style={{ left: `${b.x}%`, top: `${b.y}%` }}>🌳<span className="question">?</span></div>
+             <div key={b.id} className="yard-obj bush" style={{ left: `${b.x}%`, top: `${b.y}%` }}><BlockArt kind="pine"/><span className="question">?</span></div>
           ))}
           {phase.id === 'scoop' && objects.poops.filter((p) => p.found && !p.scooped).map((p) => (
-            <div key={p.id} className="yard-obj poop" style={{ left: `${p.x}%`, top: `${p.y}%` }}>💩</div>
+             <div key={p.id} className="yard-obj poop" style={{ left: `${p.x}%`, top: `${p.y}%` }}><BlockArt kind="pile"/></div>
           ))}
           {phase.id === 'mow' && objects.strips.filter((s) => !s.mowed).map((s) => (
-            <div key={s.id} className="yard-obj strip" style={{ left: `${s.x}%`, top: `${s.y}%` }}>🌿</div>
+             <div key={s.id} className="yard-obj strip" style={{ left: `${s.x}%`, top: `${s.y}%` }}><BlockArt kind="grass"/></div>
           ))}
           {phase.id === 'mow' && objects.strips.filter((s) => s.mowed).map((s) => (
             <div key={s.id} className="yard-obj mowed" style={{ left: `${s.x}%`, top: `${s.y}%` }} />
           ))}
           {phase.id === 'rake' && objects.leaves.filter((l) => !l.raked).map((l) => (
-            <div key={l.id} className="yard-obj leaf" style={{ left: `${l.x}%`, top: `${l.y}%` }}>🍂</div>
+             <div key={l.id} className="yard-obj leaf" style={{ left: `${l.x}%`, top: `${l.y}%` }}><BlockArt kind="leaf"/></div>
           ))}
           {phase.id === 'rake' && objects.leaves.filter((l) => l.raked).map((l) => (
             <div key={l.id} className="yard-obj raked" style={{ left: `${l.x}%`, top: `${l.y}%` }}>🍁</div>
@@ -502,3 +502,4 @@ export default function YardJob({ market, characterId, perks = [], upgrades = {}
     </div>
   )
 }
+import { BlockArt } from './BlockArt.jsx'

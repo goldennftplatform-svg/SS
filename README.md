@@ -53,7 +53,8 @@ See [`docs/GDD.md`](docs/GDD.md) for the full design.
 
 | Action | Keyboard | Mobile |
 |---|---|---|
-| Steer the bike | ← → / A D | ◀ ▶ buttons |
+| Start the bike dispatch | Q to clean house #1 | Scoop left |
+| Steer the auto-pedaling bike | ← → / A D | ◀ ▶ buttons |
 | Scoop left / right | Q / E (SPACE = auto side) | 🧹 LEFT / RIGHT 🧹 buttons |
 | Wave at dog | W / ↑ | WAVE 🐕 button |
 | Pause / quit | HQ button | HQ button |
