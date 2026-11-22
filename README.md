@@ -55,7 +55,8 @@ See [`docs/GDD.md`](docs/GDD.md) for the full design.
 |---|---|---|
 | Start the bike dispatch | Q to clean house #1 | Scoop left |
 | Steer the auto-pedaling bike | ← → / A D | ◀ ▶ buttons |
-| Scoop left / right | Q / E (SPACE = auto side) | 🧹 LEFT / RIGHT 🧹 buttons |
+| Scoop left / right (+100 points) | Q / E | Scoop left / right |
+| Jump a striped gap (+75 points) | Space | ↑ Jump |
 | Wave at dog | W / ↑ | WAVE 🐕 button |
 | Pause / quit | HQ button | HQ button |
 

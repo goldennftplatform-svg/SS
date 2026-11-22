@@ -84,7 +84,10 @@ export default function App() {
 
   const completeJob = (result, scorer) => {
     const rewards = scorer(result)
-    if (jobConfig.type !== 'yard') rewards.routeCard = `${result.cleared}/${result.total} curbs cleaned · best chain ×${result.combo}`
+    if (jobConfig.type !== 'yard') {
+      rewards.coins += result.tip
+      rewards.routeCard = `${result.points}/${result.goal} pts · ${result.cleared}/${result.total} curbs · ${result.gaps} gaps cleared · ${result.tip ? `+${result.tip} coins for the on-time target` : result.late ? 'No target bonus: late finish' : 'Score target missed'}`
+    }
     const late = !!result.late
     if (late) {
       rewards.coins = Math.round(rewards.coins * 0.5)

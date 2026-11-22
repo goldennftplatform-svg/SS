@@ -26,3 +26,6 @@
   .ride-game .ride-bottom {bottom:55px}
   .ride-game .ride-banner {white-space:normal;width:max-content;max-width:90%;text-align:center}
 }
+.ride-goal {color:#ffdb87;font:800 clamp(11px,1.6vw,16px) system-ui,sans-serif}
+.ride-controls .ride-jump {background:#9de0d8}
+.ride-controls .ride-jump.lit {background:#ffd269;outline:3px solid #76532b}

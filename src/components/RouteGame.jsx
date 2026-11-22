@@ -14,9 +14,15 @@ const ROAD_BOTTOM = 46
 const SCOOP_WINDOW = 4
 const COMBO_WINDOW = 2600
 const TIERS = [4, 8, 12]
-const HOUSES = Array.from({ length: 18 }, (_, i) => ({
-  id: i,
-  at: 3 + i * 8.4,
+const GAP_SLOTS = [2, 5, 8, 10, 14, 16]
+const atSlot = i => 3 + i * 8.4
+const GAPS = GAP_SLOTS.map(atSlot)
+const GOAL = 1200, CURB_POINTS = 100, GAP_POINTS = 75, BONUS = 25
+const FLIGHT = 950
+const lift = elapsed => elapsed < 0 || elapsed >= FLIGHT ? 0 : 4 * (elapsed / FLIGHT) * (1 - elapsed / FLIGHT)
+const HOUSES = Array.from({ length: 18 }, (_, i) => i).filter(i => !GAP_SLOTS.includes(i)).map((i,id) => ({
+  id,
+  at: atSlot(i),
   side: [-1,1,-1,-1,1,1][i % 6],
   dog: i % 5 === 4,
 }))
@@ -45,6 +51,11 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
   const TOTAL_TIME = Math.round((urgency ? 35 : 41) / (1 + Math.min(0.2, (level - 1) * 0.025)))
   const scoopWindow = Math.max(3, SCOOP_WINDOW - (level - 1) * 0.12)
   const [rolling, setRolling] = useState(false)
+  const launch = useRef(-Infinity), gapIndex = useRef(0), clearedGaps = useRef(0)
+  const jump = useCallback(() => {
+    const now = window.performance.now()
+    if (rolling && !doneRef.current && now - launch.current >= FLIGHT + 220) launch.current = now
+  }, [rolling])
 
   const [distance, setDistance] = useState(0)
   const [steer, setSteer] = useState(0)
@@ -97,7 +108,9 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     if (doneRef.current) return
     doneRef.current = true
     setDone(true)
+    const points = housesRef.current.filter(h => h.clean).length * CURB_POINTS + clearedGaps.current * GAP_POINTS
     onFinish({
+      points, goal: GOAL, gaps: clearedGaps.current, tip: !late && points >= GOAL ? BONUS : 0,
       performance: Math.max(0, Math.min(1, performance)),
       late,
       urgency,
@@ -140,7 +153,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     if (comboRef.current >= TIERS[2] && tierRef.current < 3) { tierRef.current = 3; audio.combo(3); onCallout?.('legend') }
     else if (comboRef.current >= TIERS[1] && tierRef.current < 2) { tierRef.current = 2; audio.combo(2); onCallout?.('storm') }
     else if (comboRef.current >= TIERS[0] && tierRef.current < 1) { tierRef.current = 1; audio.combo(1); onCallout?.('hotStreak') }
-    flashBanner(`✨ CLEANED HOUSE #${target.id + 1} · 🔥 x${comboRef.current}`)
+    flashBanner(`✨ Clean curb #${target.id + 1} · +${CURB_POINTS} pts`, 800)
   }, [breakCombo, flashBanner, onCallout, scoopWindow, rolling])
 
   const wave = useCallback(() => {
@@ -177,6 +190,22 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
       const next = Math.min(LENGTH, distanceRef.current + speed * finalBoost * dt)
       distanceRef.current = next
       setDistance(next)
+      const height = lift(now - launch.current)
+      if (next >= GAPS[gapIndex.current]) {
+        gapIndex.current++
+        if (height >= 0.38) {
+          clearedGaps.current++
+          audio.coin()
+          flashBanner(`Gap cleared! +${GAP_POINTS} pts`, 900)
+        } else {
+          audio.hurt()
+          mistakesRef.current++
+          setMistakes(mistakesRef.current)
+          setTimeLeft(t => Math.max(0, t - 1))
+          breakCombo()
+          flashBanner('Caught the gap · −1s. Jump at the gold stripe.', 1000)
+        }
+      }
 
       if (comboRef.current > 0) {
         const left = 1 - (Date.now() - comboTimeRef.current) / COMBO_WINDOW
@@ -199,7 +228,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
 
       HAZARDS.forEach((h) => {
         if (hitRef.current.has(h.id)) return
-        if (Math.abs(next - h.at) < 1.7 && Math.abs(steerRef.current - h.lane) < 0.42) {
+        if (Math.abs(next - h.at) < 1.7 && Math.abs(steerRef.current - h.lane) < 0.42 && !(h.type === 'cone' && height > .38)) {
           hitRef.current.add(h.id)
           setBump(true)
           clearTimeout(bumpTimer.current)
@@ -236,7 +265,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
   }, [done, rolling])
   useEffect(() => { if (timeLeft <= 0) finish(0, true) }, [timeLeft, finish])
 
-  // keyboard: steer with A/D or arrows, scoop left with Q, right with E, SPACE auto
+  // Steering and scooping stay independent of the timed hop.
   useEffect(() => {
     if (done) return
     const down = (e) => {
@@ -246,7 +275,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
       if (key === 'ArrowRight' || key === 'd' || key === 'D') keysRef.current.right = true
       if (key === 'q' || key === 'Q') scoop(-1)
       if (key === 'e' || key === 'E') scoop(1)
-      if (key === ' ') { e.preventDefault(); scoop(steerRef.current < 0 ? -1 : 1) }
+      if (key === ' ') { e.preventDefault(); jump() }
       if (key === 'w' || key === 'W' || key === 'ArrowUp') { e.preventDefault(); wave() }
     }
     const up = (e) => {
@@ -257,7 +286,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
-  }, [done, scoop, wave])
+  }, [done, scoop, wave, jump])
 
   useEffect(() => {
     if (combo >= TIERS[2] && tierRef.current < 3) { tierRef.current = 3; audio.combo(3); onCallout?.('legend') }
@@ -292,9 +321,14 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
   const nextStop = houses.find(h => !h.clean && !h.missed)
   const ready = nextStop && Math.abs(nextStop.at - distance) <= scoopWindow
   const sideName = nextStop?.side === -1 ? 'LEFT' : 'RIGHT'
-  const district = Math.min(2, Math.floor((nextStop?.id ?? 17) / 6))
+  const district = Math.min(2, Math.floor(distance / 50))
+  const nextGap = GAPS[gapIndex.current]
+  const gapNext = nextGap !== undefined && (!nextStop || nextGap < nextStop.at)
+  const gapETA = (nextGap - distance) / (speed * (distance > 82 ? char.perkEffect.finalSpeed || 1 : 1))
+  const jumpNow = gapNext && gapETA <= .74
+  const altitude = lift(window.performance.now() - launch.current)
+  const points = cleanCount * CURB_POINTS + clearedGaps.current * GAP_POINTS
   const progress = distance / LENGTH * 100
-  const missedCount = houses.filter((h) => h.missed).length
   const tier = combo >= TIERS[2] ? 3 : combo >= TIERS[1] ? 2 : combo >= TIERS[0] ? 1 : 0
   const hold = (key, down) => { keysRef.current[key] = down }
 
@@ -313,6 +347,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
       <div className="ride-minimap" aria-label="Route house tracker">
         <div className="ride-mini-track">
           <i className="ride-mini-fill" style={{ width: `${progress}%` }} />
+          {GAPS.map((at,i) => <span aria-hidden="true" key={at} style={{position:'absolute',left:`${at/LENGTH*100}%`,top:'33%',color:i < gapIndex.current?'#899f94':'#ffce65',font:'bold 10px monospace'}}>∧</span>)}
           {houses.map((h) => (
             <span key={h.id}
               className={`ride-mini-house ${h.clean ? 'clean' : ''} ${h.missed ? 'missed' : ''} ${!h.clean && !h.missed && Math.abs(h.at - distance) <= scoopWindow ? 'active' : ''}`}
@@ -324,7 +359,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
         </div>
         <div className="ride-mini-meta">
           <span>🏠 {cleanCount}/{HOUSES.length} cleaned</span>
-          <span>❌ {missedCount} missed</span>
+          <span>{clearedGaps.current}/{GAPS.length} gaps cleared</span>
           <span>⚠ {mistakes} mistakes</span>
           <span>🐕 {waved.length}/{WAVE_AT.length}</span>
         </div>
@@ -332,8 +367,9 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
 
       <div className={`stop-order ${ready ? 'ready' : ''}`}>
         <small>SCUPH DISPATCH · BLOCK {district + 1}/3 · {BLOCKS[district]}</small>
-        <strong>{!rolling ? 'Clean 18 curbs. Start at the left house.' : nextStop ? `${ready ? 'SCOOP NOW' : 'UP NEXT'} · #${nextStop.id + 1} ${sideName}` : 'Last stop passed · ride to the finish'}</strong>
-        <span>{!rolling ? 'Press Q or tap Scoop Left to clean #1 and start the clock.' : ready ? `Press ${nextStop.side < 0 ? 'Q' : 'E'} or tap Scoop ${sideName}.` : 'The bike pedals itself. Steer around obstacles.'}</span>
+        <b className="ride-goal">{points} / {GOAL} pts · {points >= GOAL ? 'Finish on time to collect' : 'On-time target'}: +{BONUS} 🪙</b>
+        <strong>{!rolling ? 'First pickup: scoop LEFT to start.' : gapNext ? (jumpNow ? 'JUMP NOW · clear the gap!' : 'Gap ahead · get ready to jump') : nextStop ? `${ready ? 'SCOOP NOW' : 'UP NEXT'} · #${nextStop.id + 1} ${sideName}` : 'Ride to the finish!'}</strong>
+        <span>{!rolling ? 'Q or Scoop left. Each curb = 100 pts. Each jump across a gap = 75.' : gapNext ? 'Space or Jump at the gold stripe · +75 pts' : ready ? `Press ${nextStop.side < 0 ? 'Q' : 'E'} or tap Scoop ${sideName} · +100 pts` : 'The bike pedals itself. Steer around obstacles.'}</span>
       </div>
       <div className="ride-viewport">
         <div className="ride-sky" style={{ backgroundPositionX: `${-distance * 2}px` }} />
@@ -359,6 +395,15 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
                 stroke="#fff6df" strokeWidth={0.5 * pr.scale} opacity=".65" />
             </g>
           ))}
+          {GAPS.slice(gapIndex.current).map(at => {
+            const pr = project(at)
+            if (!pr) return null
+            // The contact line meets the wheels at 88% of the viewport.
+            const y = HORIZON + (pr.y - HORIZON) * 58 / 70
+            const half = ROAD_TOP + (pr.half - ROAD_TOP) * 58 / 70
+            return <g key={at}><path d={`M${50-half} ${y}h${2*half}`} stroke="#202c33" strokeWidth={4*pr.t+.5}/>
+              <path d={`M${50-half} ${y+2*pr.t}h${2*half}`} stroke="#ffca60" strokeDasharray="3 1" strokeWidth={pr.t+.35}/></g>
+          })}
         </svg>
 
         {houses.slice().reverse().map((h) => {
@@ -410,7 +455,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
         })}
 
         <div className={`ride-player ${bump ? 'bump' : ''}`}
-          style={{ left: `${50 + steer * 26}%`, transform: `translateX(-50%) rotate(${steer * 8}deg)` }}>
+          style={{ left: `${50 + steer * 26}%`, transform: `translate(-50%,${-altitude * 85}%) rotate(${steer * 8 - altitude * 12}deg)` }}>
           <CharacterSprite character={char} pose="ride" />
           <span className="ride-broom"><FieldScoop /></span>
         </div>
@@ -419,7 +464,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
 
         <div className="ride-bottom">
           <div className="ride-score-plate">🧹 {cleanCount}/{HOUSES.length} · 🔥 x{combo}</div>
-          <div className="ride-hint"><span>◀ ▶ steer</span><span>Q left · E right scoop</span><span>SPACE auto</span><span>W wave 🐕</span></div>
+          <div className="ride-hint"><span>◀ ▶ steer</span><span>Q left · E right scoop</span><span>Space jumps gaps</span><span>W wave 🐕</span></div>
         </div>
 
         <div className="ride-controls">
@@ -427,7 +472,8 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
           <button className={`ride-scoop ${ready && nextStop.side < 0 ? 'lit' : ''}`} aria-label="Scoop left" onClick={() => scoop(-1)}>◀ Scoop left</button>
           <button className={`ride-scoop ${ready && nextStop.side > 0 ? 'lit' : ''}`} aria-label="Scoop right" onClick={() => scoop(1)}>Scoop right ▶</button>
           <button onPointerDown={() => hold('right', true)} onPointerUp={() => hold('right', false)} onPointerLeave={() => hold('right', false)}>▶</button>
-          <button className="ride-wave" onPointerDown={wave}>WAVE 🐕</button>
+          <button className={`ride-jump ${jumpNow ? 'lit' : ''}`} onClick={jump}>↑ Jump</button>
+          <button className="ride-wave" onPointerDown={wave} aria-label="Wave at dog">🐕</button>
         </div>
       </div>
     </div>
