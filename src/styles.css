@@ -289,6 +289,91 @@ button { font-family: inherit; cursor: pointer; }
 .mobile-controls button { border: 3px solid var(--ink); border-radius: 12px; background: var(--cream); font-weight: 900; padding: 10px 14px; box-shadow: 0 3px 0 var(--ink); }
 .mobile-controls .scoop-btn { background: var(--gold); font-family: var(--font-display); font-size: 14px; }
 
+/* ---------- street ride (paperboy-style route) ---------- */
+.ride-game { height: 100%; display: flex; flex-direction: column; background: #87ceeb; overflow: hidden; position: relative; }
+.ride-hud {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  background: rgba(28,43,38,.92); color: #fff; z-index: 20;
+}
+.ride-hud strong { font-family: var(--font-display); font-size: 14px; }
+.ride-mode { background: var(--gold); color: var(--ink); border-radius: 8px; padding: 4px 8px; font-size: 10px; font-weight: 900; }
+.ride-game.urgent .ride-mode { background: var(--coral); color: #fff; }
+.ride-hud-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.ride-chain { position: relative; display: inline-flex; flex-direction: column; align-items: center; min-width: 42px; color: var(--gold); font-weight: 900; }
+.ride-chain i { display: block; width: 0; height: 3px; margin-top: 2px; border-radius: 2px; background: var(--gold); transition: width .08s linear; }
+.ride-minimap { flex: 0 0 auto; background: #101b17; padding: 8px 12px 6px; border-bottom: 3px solid var(--ink); z-index: 19; }
+.ride-mini-track { position: relative; height: 18px; background: #26382f; border: 2px solid #fff; border-radius: 10px; }
+.ride-mini-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #5b9c6a, var(--gold)); border-radius: 8px; opacity: .55; }
+.ride-mini-house { position: absolute; top: 50%; transform: translate(-50%,-50%); font-size: 12px; line-height: 1; filter: grayscale(.6); }
+.ride-mini-house.clean { filter: none; }
+.ride-mini-house.missed { opacity: .55; filter: sepia(1) saturate(3) hue-rotate(-40deg); }
+.ride-mini-house.active { filter: drop-shadow(0 0 5px #d6ff69); animation: miniPulse .5s infinite alternate; }
+@keyframes miniPulse { to { transform: translate(-50%,-50%) scale(1.35); } }
+.ride-mini-bike { position: absolute; top: 50%; transform: translate(-50%,-50%); font-size: 16px; }
+.ride-mini-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; color: #cfe6d6; font: 800 9px ui-monospace, monospace; }
+.ride-viewport { flex: 1; position: relative; overflow: hidden; }
+.ride-sky { position: absolute; inset: 0; background: linear-gradient(#8fd0f0 0%, #ffe1a0 62%, #f6b26b 100%); background-size: 400px 100%; }
+.ride-game.urgent .ride-sky { background: linear-gradient(#1b2a4a 0%, #5a3a6e 60%, #d16a5a 100%); }
+.ride-sun { position: absolute; top: 8%; right: 14%; width: 64px; height: 64px; border-radius: 50%; background: radial-gradient(circle, #fff6c0, #ffd05a); box-shadow: 0 0 40px #ffd98a; }
+.ride-sun.moon { background: radial-gradient(circle, #eaf2ff, #9db8d8); box-shadow: 0 0 30px #bcd3ff; }
+.ride-hills {
+  position: absolute; top: 27%; left: 0; right: 0; height: 13%; opacity: .9;
+  background: radial-gradient(ellipse at 20% 100%, #6fa85c 0 40%, transparent 41%) 0 0/180px 100% repeat-x,
+              radial-gradient(ellipse at 70% 100%, #5e9950 0 38%, transparent 39%) 60px 0/220px 100% repeat-x;
+}
+.ride-trees {
+  position: absolute; top: 29%; left: 0; right: 0; height: 8%; opacity: .75;
+  background: repeating-linear-gradient(90deg, transparent 0 14px, #2f6e4f 14px 32px, transparent 32px 46px);
+  background-size: 300px 100%;
+}
+.ride-road { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+.ride-house {
+  position: absolute; z-index: 3; font-size: clamp(22px, 4vw, 40px); line-height: 1; text-align: center;
+  filter: drop-shadow(0 3px 2px #0006); transform-origin: 50% 100%;
+}
+.ride-house small { display: block; font: 900 8px ui-monospace, monospace; color: #fff; text-shadow: 1px 1px 0 #000; }
+.ride-house.active { animation: houseGlow .5s infinite alternate; }
+@keyframes houseGlow { to { filter: drop-shadow(0 0 10px #d6ff69) brightness(1.3); } }
+.ride-house.clean { filter: grayscale(.5) brightness(1.2); }
+.ride-house.missed { opacity: .45; filter: sepia(1) hue-rotate(-30deg); }
+.ride-target { position: absolute; z-index: 4; font-size: clamp(20px, 4vw, 36px); pointer-events: none; }
+.ride-target.active { filter: drop-shadow(0 0 9px #d6ff69) brightness(1.2); }
+.ride-target.missed { opacity: .3; }
+.ride-house-dog { position: absolute; z-index: 4; font-size: clamp(16px, 3vw, 28px); }
+.ride-hazard { position: absolute; z-index: 5; font-size: clamp(22px, 4vw, 38px); animation: rideWiggle .4s infinite alternate; }
+@keyframes rideWiggle { to { margin-top: -4px; } }
+.ride-friendly-dog { position: absolute; z-index: 5; font-size: clamp(20px, 3.5vw, 32px); filter: drop-shadow(0 0 6px #ffd35a); }
+.ride-player { position: absolute; bottom: 12%; z-index: 8; width: clamp(70px, 14vw, 120px); transform-origin: 50% 100%; }
+.ride-player .scoop-knight { width: 100%; height: auto; filter: drop-shadow(0 6px 3px #0007); }
+.ride-player.bump { animation: rideShake .25s; }
+@keyframes rideShake { 25% { margin-left: -8px; } 75% { margin-left: 8px; } }
+.ride-broom { position: absolute; right: -6px; bottom: 18%; font-size: 24px; transform: rotate(-20deg); }
+.ride-banner {
+  position: absolute; z-index: 12; top: 12%; left: 50%; transform: translateX(-50%);
+  background: rgba(28,43,38,.94); color: #fff; border: 3px solid var(--gold); border-radius: 12px;
+  padding: 6px 14px; font: 900 11px ui-monospace, monospace; white-space: nowrap; pointer-events: none;
+}
+.ride-bottom { position: absolute; left: 10px; right: 10px; bottom: 6px; z-index: 10; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+.ride-score-plate { background: var(--cream); border: 3px solid var(--ink); border-radius: 10px; padding: 5px 9px; font-weight: 900; font-size: 11px; }
+.ride-hint { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.ride-hint span { background: rgba(28,43,38,.85); color: #fff; border-radius: 7px; padding: 4px 7px; font: 800 9px ui-monospace, monospace; }
+.ride-controls { position: absolute; z-index: 11; left: 8px; right: 8px; bottom: 46px; display: flex; gap: 5px; justify-content: center; }
+.ride-controls button {
+  border: 3px solid var(--ink); border-radius: 12px; background: var(--cream); font-weight: 900;
+  padding: 8px 10px; box-shadow: 0 3px 0 var(--ink); font-size: 12px; touch-action: none;
+}
+.ride-controls .ride-scoop { background: var(--gold); font-family: var(--font-display); font-size: 11px; }
+.ride-controls .ride-wave { background: #7fc6a0; }
+.ride-game.tier-1 .ride-viewport { box-shadow: inset 0 0 40px #ffb34755; }
+.ride-game.tier-2 .ride-viewport { box-shadow: inset 0 0 70px #ffd35a88; }
+.ride-game.tier-3 .ride-viewport { box-shadow: inset 0 0 90px #fff3aacc; }
+@media (max-width: 560px) {
+  .ride-mode { display: none; }
+  .ride-mini-meta { font-size: 8px; }
+  .ride-hint { display: none; }
+  .ride-controls button { padding: 8px; font-size: 10px; }
+}
+
 /* ---------- results ---------- */
 .results-screen { background: radial-gradient(circle at 50% 20%, #ffe6a0, #e08b4f); }
 .results-card {
