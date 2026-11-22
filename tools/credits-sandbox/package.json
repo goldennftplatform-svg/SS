@@ -1,0 +1,11 @@
+{
+  "name": "scuph-credits-sandbox",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node portal.js", "test": "node --test ledger.test.js" },
+  "engines": { "node": ">=22.13" },
+  "dependencies": {
+    "ethers": "^6.17.0",
+    "square": "^46.1.0"
+  }
+}

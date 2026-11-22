@@ -46,6 +46,7 @@ export default function Hub({ save, onMap, onBuyUpgrade, onSelectCharacter, onRe
 
       <footer className="hub-footer">
         <span>Making the world cleaner, one scoop at a time.</span>
+        {import.meta.env.DEV && import.meta.env.VITE_CREDITS_PILOT === '1' && <a href="http://127.0.0.1:8787" target="_blank" rel="noreferrer">Credits &amp; prizes · local sandbox ↗</a>}
         <button className="link-btn" onClick={onReset} title="Reset saved progress">Reset save</button>
       </footer>
     </div>
