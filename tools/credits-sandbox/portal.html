@@ -1,16 +1,59 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>SCUPH · Sandbox credits</title><style>body{margin:3rem auto;padding:0 1rem;max-width:42rem;background:#182b31;color:#f1ecdd;font:17px system-ui}button{padding:.7rem;background:#efce8a;border:0;border-radius:4px}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>
-<main><small>SCUPH SAFARI / OPERATOR PILOT</small><h1>Credits &amp; prizes</h1>
-<p>Sandbox receipts and Sepolia test prizes only. Signing links this wallet to a test account. It does not move assets.</p>
-<button id="link">Link self-custody wallet</button> <button id="refresh" disabled>Refresh ledger</button>
-<pre id="out" aria-live="polite"></pre></main>
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#091b1c"><title>Field Pass · SCUPH Safari</title>
+<style>
+:root{color-scheme:dark;--paper:#f3eddd;--soft:#b4c6ba;--line:#45605a;--gold:#efd197;--mono:ui-monospace,Consolas,monospace}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 5%,#254a42 0,transparent 48%),#0a191b;color:var(--paper);font:16px/1.5 system-ui,sans-serif}main,header,footer{max-width:1160px;margin:auto;padding:0 clamp(18px,5vw,70px)}header,footer,.head,.actions,.mast{display:flex;align-items:center;justify-content:space-between;gap:14px}header{min-height:74px;font-weight:850;letter-spacing:.06em}.mark{display:inline-grid;place-items:center;color:#172923;background:var(--gold);width:30px;height:30px;clip-path:polygon(0 0,100% 0,100% 65%,50% 100%,0 65%);margin-right:.55em;font:900 20px Georgia}.tag,small,.serial,dt{font:700 11px/1.5 var(--mono);letter-spacing:.12em;text-transform:uppercase}.tag{border:1px solid #849680;border-radius:99px;padding:4px 10px;color:#d4e7ba}
+.hero{position:relative;isolation:isolate;overflow:hidden;border:1px solid #586d5d;background:linear-gradient(115deg,#213f36,#182e30 52%,#25483f);border-radius:13px;padding:clamp(24px,4vw,54px);box-shadow:0 20px 60px #0003,inset 0 1px #fff2}.hero:before{content:"";position:absolute;inset:0;z-index:-1;background:repeating-radial-gradient(ellipse at 95% 130%,transparent 0 20px,#cfdec511 21px,transparent 22px 32px);mask-image:linear-gradient(90deg,transparent,#000 55%)}.hero small{color:var(--gold)}h1{margin:16px 0 10px;font:500 clamp(54px,8vw,104px)/.95 Georgia,serif;letter-spacing:-.065em}.desc{max-width:41ch;color:#d4e2d5;margin:16px 0 22px}.hero-copy{position:relative;max-width:64%}.badge{width:32%;max-height:235px;position:absolute;top:50%;right:3%;transform:translateY(-50%) rotate(6deg);filter:drop-shadow(4px 12px 9px #06131099)}.balance{margin-top:20px;padding-top:15px;border-top:1px solid #b3c4ae42;display:flex;align-items:baseline;gap:10px}.balance b{font:600 32px/1 var(--mono);color:var(--gold)}
+button{cursor:pointer;border:1px solid #ecd39a;background:var(--gold);color:#192924;padding:11px 16px;border-radius:5px;font:750 14px system-ui}button:disabled{opacity:.5;cursor:default}button:focus-visible,a:focus-visible{outline:3px solid #aef2d3;outline-offset:3px}button:not(:disabled):hover{filter:brightness(1.09)}#refresh{background:none;border-color:var(--line);color:var(--soft)}.actions{justify-content:flex-start;flex-wrap:wrap}.status{margin:14px 0 0;font-size:14px;color:#d4e2d5;overflow-wrap:anywhere}.status:empty{display:none}.serial{color:#b5c6bc}
+.grid{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;margin:22px 0}.panel{min-width:0;padding:22px;background:#142726;border:1px solid #354b46;border-radius:9px}.head{align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:14px}.head small{color:var(--gold)}h2{font:500 27px/1.2 Georgia,serif;margin:3px 0}.num{font:13px var(--mono);color:#cbdbcb;border:1px solid var(--line);padding:5px 8px;border-radius:4px}.empty{color:var(--soft);font-size:15px;padding:18px 0 4px;margin:0}.row{border-bottom:1px solid #355049;padding:13px 0;overflow-wrap:anywhere}.row:last-child{border:0}.row b{font-size:16px}.row span{display:block;font:12px/1.6 var(--mono);color:var(--soft)}.row a{color:var(--gold)}.amount{color:#b9dfb7;float:right;margin-left:8px}.negative{color:#ffbb98}footer{padding-bottom:30px;color:var(--soft);font-size:12px;flex-wrap:wrap}
+@media(max-width:640px){.grid{grid-template-columns:1fr}.hero-copy{max-width:none}.badge{width:92px;top:18px;right:10px;transform:rotate(6deg)}h1{margin-top:26px}.hero small{display:block;max-width:62%}.mast{align-items:flex-start}.panel{padding:17px}header{font-size:13px}.hero{padding:22px}.balance small{max-width:none}}
+</style>
+<header><div><span class="mark" aria-hidden="true">S</span>SCUPH SAFARI</div><span class="tag">Sepolia · Sandbox</span></header>
+<main>
+<section class="hero" aria-labelledby="title">
+<svg class="badge" viewBox="0 0 260 245" aria-hidden="true">
+<defs><linearGradient id="metal" x2=".8" y2="1"><stop stop-color="#82582c"/><stop offset=".24" stop-color="#fae4a8"/><stop offset=".45" stop-color="#c29253"/><stop offset=".7" stop-color="#fae9b9"/><stop offset="1" stop-color="#80582d"/></linearGradient></defs>
+<path d="m85 153-21 75 36-14 14 23 21-76 19 76 16-24 34 13-26-78" fill="#477961" stroke="#b69c6d" stroke-width="3"/>
+<path d="m130 8 48 12 39 36 13 49-13 50-38 37-49 15-49-15-38-37-13-50 13-49 39-36z" fill="url(#metal)" stroke="#463d2f" stroke-width="4"/>
+<circle cx="130" cy="106" r="85" fill="#1d3832" stroke="#f5dfa5" stroke-width="2"/><circle cx="130" cy="106" r="78" fill="none" stroke="#cdb47d" stroke-dasharray="1 5" stroke-width="3"/>
+<path d="m60 119 34-44 9 11 31-41 40 48 10-12 20 33-46-21-23-27-21 34-10-6-19 21z" fill="url(#metal)"/>
+<path d="m83 117 8-16 8 16h-5l7 10H82l6-10zm79 0 10-22 11 22h-5l9 13h-29l9-13z" fill="#86a692"/>
+<g fill="none" stroke="#e9d096" stroke-linecap="round" stroke-linejoin="round"><g stroke-width="3"><circle cx="105" cy="146" r="12"/><circle cx="155" cy="146" r="12"/></g><path stroke-width="4" d="m105 146 11-20 13 20h-24l38-19 12 19-12-28h-6m-27 5h12"/></g>
+<text x="130" y="179" text-anchor="middle" fill="#e9d096" font-family="monospace" font-size="10" letter-spacing="3">SOUTH SOUND</text>
+</svg>
+<div class="hero-copy"><small>South Sound / Courier credentials</small><h1 id="title">Field Pass</h1>
+<p class="desc">Your Square cash receipts and test prizes, filed under one wallet. Sign to see your ledger. No assets move.</p>
+<div class="actions"><button id="link">Link wallet ↗</button><button id="refresh" disabled>Refresh</button></div>
+<p id="out" role="status" class="status"></p>
+<div class="balance"><b id="credits">—</b><small>Test credits</small></div><span class="serial" id="holder">Wallet not linked</span>
+</div></section>
+<div class="grid">
+<section class="panel"><div class="head"><div><small>01 / Receipts</small><h2>Credit ledger</h2></div><span class="num" id="ec">—</span></div><div id="entries"></div></section>
+<section class="panel"><div class="head"><div><small>02 / Awards</small><h2>Prize case</h2></div><span class="num" id="pc">—</span></div><div id="prizes"></div></section>
+</div></main>
+<footer><span>SCUPH.COM · Making the world cleaner, one scoop at a time.</span><span>Operator pilot / Test assets only</span></footer>
 <script type="module">
-let token
-const link=document.querySelector('#link'),refresh=document.querySelector('#refresh'),out=document.querySelector('#out')
-async function api(path,body){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});const v=await r.json();if(!r.ok)throw Error(v.error);return v}
-function reset(){token=null;refresh.disabled=true;out.textContent=''}
-async function show(){const v=await api('/ledger',{});out.textContent=[v.wallet,`${v.credits} test credits`,'',...v.entries.map(e=>`${e.booked} UTC · ${e.ticket}: ${e.delta>0?'+':''}${e.delta}`),'','Prizes',...v.prizes.map(p=>`${p.award} · ${p.kind} ${p.units} ${p.asset} · ${p.tx||'awaiting delivery'}`)].join('\n')}
-link.onclick=async()=>{try{reset();const w=window.ethereum;if(!w)throw Error('Open in a browser with an EVM wallet extension.');const [wallet]=await w.request({method:'eth_requestAccounts'});if(await w.request({method:'eth_chainId'})!=='0xaa36a7')throw Error('Select Sepolia in your wallet and reconnect.');const c=await api('/challenge',{wallet});const hex='0x'+Array.from(new TextEncoder().encode(c.message),b=>b.toString(16).padStart(2,'0')).join('');const signature=await w.request({method:'personal_sign',params:[hex,wallet]});token=(await api('/verify',{nonce:c.nonce,signature})).token;refresh.disabled=false;await show()}catch(e){out.textContent=e.message}}
-refresh.onclick=()=>show().catch(e=>out.textContent=e.message)
-window.ethereum?.on?.('accountsChanged',reset);window.ethereum?.on?.('chainChanged',reset)
+const $=id=>document.getElementById(id),link=$('link'),refresh=$('refresh'),out=$('out')
+let token,revision=0
+function el(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e}
+function list(id,rows,empty,render){$(id).replaceChildren(...(rows.length?rows.map(render):[el('p',empty,'empty')]))}
+function reset(){revision++;token=null;link.disabled=false;link.textContent='Link wallet ↗';refresh.disabled=true;out.textContent='';$('holder').textContent='Wallet not linked';for(const id of ['credits','ec','pc'])$(id).textContent='—';list('entries',[],'Link your wallet to view cash receipts.');list('prizes',[],'Link your wallet to view awarded prizes.')}
+async function api(path,body){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)});const v=await r.json();if(!r.ok){if(r.status===401)reset();throw Error(v.error)}return v}
+const compact=s=>s.slice(0,8)+'…'+s.slice(-6)
+async function show(){const stamp=revision,v=await api('/ledger',{});if(stamp!==revision)return
+ $('holder').textContent=compact(v.wallet)+' / linked';$('holder').title=v.wallet;$('credits').textContent=v.credits.toLocaleString();$('ec').textContent=v.entries.length;$('pc').textContent=v.prizes.length
+ list('entries',v.entries,'No receipts posted yet.',e=>{const row=el('div','','row');row.append(el('b',(e.delta>0?'+':'')+e.delta,'amount'+(e.delta<0?' negative':'')),el('b',e.ticket),el('span',`${e.booked} UTC · ${e.delta<0?'Adjustment':'Cash receipt'}`));return row})
+ list('prizes',v.prizes,'No prizes awarded yet.',p=>{const row=el('div','','row');row.append(el('b',p.award),el('span',p.kind==='nft'?`ERC-721 #${p.units} · ${p.asset}`:`Sepolia ETH · ${p.units} wei`));if(/^0x[\da-f]{64}$/i.test(p.tx)){const a=el('a','Delivered · View transaction ↗');a.href='https://sepolia.etherscan.io/tx/'+p.tx;a.target='_blank';a.rel='noreferrer';row.append(a)}else row.append(el('span','Pending delivery'));return row})
+ out.textContent='Ledger up to date.'}
+link.onclick=async()=>{reset();const stamp=revision;try{const w=window.ethereum;if(!w)throw Error('Open in a browser with an EVM wallet extension.');link.disabled=true;out.textContent='Choose your wallet account…'
+ const [wallet]=await w.request({method:'eth_requestAccounts'});if(stamp!==revision)return;if(await w.request({method:'eth_chainId'})!=='0xaa36a7')throw Error('Select Sepolia in your wallet and reconnect.')
+ const c=await api('/challenge',{wallet});out.textContent='Sign the wallet-link message to open your pass.';const hex='0x'+Array.from(new TextEncoder().encode(c.message),b=>b.toString(16).padStart(2,'0')).join('');const signature=await w.request({method:'personal_sign',params:[hex,wallet]});if(stamp!==revision)return
+ const v=await api('/verify',{nonce:c.nonce,signature});const [current]=await w.request({method:'eth_accounts'});if(stamp!==revision)return;if(current?.toLowerCase()!==wallet.toLowerCase())throw Error('Wallet changed. Link your current account.');token=v.token;refresh.disabled=false;link.textContent='Relink wallet';await show()
+ }catch(e){if(stamp===revision)out.textContent=e.message}finally{if(stamp===revision)link.disabled=false}}
+refresh.onclick=async()=>{refresh.disabled=true;try{await show()}catch(e){out.textContent=e.message}finally{refresh.disabled=!token}}
+window.ethereum?.on?.('accountsChanged',()=>{if(token||!link.disabled)reset()});window.ethereum?.on?.('chainChanged',reset)
+window.ethereum?.on?.('disconnect',reset)
+reset()
 </script></html>
