@@ -6,7 +6,7 @@ import Install from './Install.jsx'
 import './region.css'
 import colors from '../data/palette.json'
 
-const missions = { yard: '🚜 Yard refresh', route: '🚲 Bike route', urgent: '🚨 Rush cleanup' }
+const missions = { yard: '🚜 Yard refresh', route: '⚡ eBike route', urgent: '🚨 Rush cleanup', mower: '🌱 Mower Maze' }
 const emojiFor = { yard: '🍂', route: '🚲', urgent: '🚨' }
 
 // Bisect the atlas between towns to draw adjoining claimable districts.
@@ -23,7 +23,7 @@ function district(c) {
 }
 const polygons = cities.map(district)
 
-export default function Region({ save, id, select, onJob, onFlyer, onHQ, onShowDialogue, muted, onToggleSound }) {
+export default function Region({ save, id, select, onJob, onFlyer, onHQ, onBoard,onShowDialogue, muted, onToggleSound }) {
   const [zoom, setZoom] = useState(1)
   const box = useRef(null)
   const c = cities[id]
@@ -62,6 +62,7 @@ export default function Region({ save, id, select, onJob, onFlyer, onHQ, onShowD
         <div className="atlas-actions">
           <button className="sound-mini" onClick={onToggleSound} aria-label="Toggle sound">{muted ? '🔇' : '🎵'}</button>
           <Install />
+          <button onClick={onBoard}>🏆 Rider leaderboard</button>
           <button onClick={onHQ}>Crew & HQ ↗</button>
         </div>
       </header>

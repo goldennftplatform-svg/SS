@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import Region from './components/Region.jsx'
 import Hub from './components/Hub.jsx'
 import RouteGame from './components/RouteGame.jsx'
+import MowerMaze from './components/MowerMaze.jsx'
+import RiderBoard from './components/RiderBoard.jsx'
+import {challenge,recordScore,syncBoard,profile,onlineRanks} from './game/riders.js'
 import YardJob from './components/YardJob.jsx'
 import Results from './components/Results.jsx'
 import PerkScreen from './components/PerkScreen.jsx'
@@ -15,7 +18,7 @@ import {
 } from './game/engine.js'
 
 export default function App() {
-  const [screen, setScreen] = useState('map')
+  const [screen, setScreen] = useState(()=>challenge()?'board':'map')
   const [save, setSave] = useState(() => {
     const s = loadSave()
     return s.contract ? s : { ...s, contract: makeContract(s, cities) }
@@ -36,7 +39,7 @@ export default function App() {
   useEffect(() => { audio.setLevel(save.level) }, [save.level])
   useEffect(() => {
     const track = screen === 'route' ? (jobConfig?.urgency ? 'urgent' : 'route')
-      : screen === 'yard' ? 'yard' : 'main'
+      : screen === 'yard' || screen === 'mower' ? 'yard' : 'main'
     audio.setTrack(track)
   }, [screen, jobConfig?.urgency])
 
@@ -56,7 +59,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (save.dialogueSeen?.includes('intro')) return
+    if (challenge() || save.dialogueSeen?.includes('intro')) return
     showDialogue('intro', {}, () => {
       setSave((s) => markDialogue(s, 'intro'))
       setScreen('map')
@@ -72,8 +75,8 @@ export default function App() {
     audio.select()
     const seen = save.dialogueSeen?.includes('dispatch')
     const lines = [
-      ...(seen ? [] : buildLines('dispatch', { city: market.name, job: jobType === 'yard' ? 'yard refresh' : 'scoop visit' })),
-      ...buildLines('routeStart', {}),
+      ...(seen ? [] : buildLines('dispatch', { city: market.name, job: jobType === 'mower'?'mowing visit':jobType === 'yard' ? 'yard refresh' : 'scoop visit' })),
+      ...buildLines(jobType==='mower'?'mowerStart':'routeStart', {}),
     ]
     afterDialogue.current = () => {
       setSave((s) => markDialogue(s, 'dispatch'))
@@ -88,10 +91,14 @@ export default function App() {
     const previousBest = save.routeRecords?.[recordKey] || 0
     {
       rewards.coins += result.tip
-      rewards.routeCard = `Ride ${jobConfig.ride.points} + service ${result.points-jobConfig.ride.points} = ${result.points} pts · ${result.delivered}/5 piles hauled · ${result.tip ? `+${result.tip} coins for the 1,200-point target` : result.late ? 'Late service' : 'Target: 1,200 pts'}`
+      rewards.routeCard = `Ride ${jobConfig.ride.points} + service ${result.points-jobConfig.ride.points} = ${result.points} pts · ${result.serviceLabel || `${result.delivered}/5 piles hauled`} · ${result.tip ? `+${result.tip} coins for the 1,200-point target` : result.late ? 'Service incomplete' : 'Target: 1,200 pts'}`
       rewards.routeCard += ` · ${result.badges}/3 brass paws${!result.late && result.points > previousBest ? ' · New town best!' : previousBest ? ` · Town best: ${previousBest}` : ''}`
     }
     const late = !!result.late
+    if(!late){
+      recordScore(jobConfig.type,result.points)
+      if(onlineRanks && profile().name)syncBoard(jobConfig.type).catch(()=>{})
+    }
     if (late) {
       rewards.coins = Math.round(rewards.coins * 0.5)
       rewards.xp = Math.round(rewards.xp * 0.6)
@@ -188,9 +195,11 @@ export default function App() {
 
   return (
     <div className="app">
+      {screen==='board' && <RiderBoard back={()=>setScreen('map')} play={mode=>{setScreen('map');if(open(save,city))briefJob(mode)}}/>}
       {screen === 'map' && (
         <Region save={save} id={city} select={(i) => { audio.tap(); setCity(i) }}
           onHQ={() => setScreen('hub')}
+          onBoard={()=>setScreen('board')}
           onFlyer={() => { audio.tap(); setSave((s) => canvass(s, city)) }}
           onJob={briefJob}
           onShowDialogue={showDialogue}
@@ -203,7 +212,7 @@ export default function App() {
           onReset={reset} />
       )}
       {screen === 'route' && jobConfig && (
-        <RouteGame market={cities[jobConfig.city].name} characterId={save.activeCharacter} urgency={jobConfig.urgency}
+        <RouteGame market={cities[jobConfig.city].name} characterId={save.activeCharacter} urgency={jobConfig.urgency} mower={jobConfig.type==='mower'}
           record={save.routeRecords?.[`${jobConfig.city}:${jobConfig.type}`]}
           upgrades={save.upgrades} level={save.level} onCallout={calloutLine}
           onFinish={(ride) => { setJobConfig({...jobConfig, ride}); setScreen('gate') }}
@@ -211,10 +220,14 @@ export default function App() {
       )}
       {screen === 'gate' && jobConfig && <div className="screen results-screen"><div className="results-card">
         <small>SCUPH BIKE DISPATCH · LEG 1 COMPLETE</small><h2>Parked at the client’s gate</h2>
-        <p>{jobConfig.ride.points} ride points · {jobConfig.ride.delay ? `Road delay: ${jobConfig.ride.delay}s less yard time` : 'Clean ride: full yard time'}</p>
-        <p>Walk over piles to scoop. Return to the parked bike to empty your bag. Haul five piles for 200 points each.{jobConfig.type === 'yard' && ' This refresh also includes finding, mowing and raking.'}</p>
-        <button className="btn btn-primary" onClick={()=>setScreen('yard')}>Dismount & start service →</button>
+        <p>{jobConfig.ride.points} ride points · {jobConfig.ride.delay ? `Road delay: −${jobConfig.ride.delay} ${jobConfig.type==='mower'?'stripes':'seconds'}` : 'Clean ride: full service budget'}</p>
+        <p>{jobConfig.type==='mower'?'Trim every grass square. Each direction sends the mower straight to the next hedge. Plan your turns before your stripe budget runs out.':'Walk over piles to scoop. Return to the parked eBike to unload five piles for 200 points each.'}{jobConfig.type === 'yard' && ' This refresh also includes finding, mowing and raking.'}</p>
+        <button className="btn btn-primary" onClick={()=>setScreen(jobConfig.type==='mower'?'mower':'yard')}>{jobConfig.type==='mower'?'Park & start mower':'Dismount & start service'} →</button>
       </div></div>}
+      {screen==='mower' && <MowerMaze city={jobConfig.city} level={save.level} ride={jobConfig.ride} onQuit={()=>setScreen('map')} onFinish={result=>{
+        const ride=jobConfig.ride,points=ride.points+result.servicePoints
+        completeJob({...result,points,badges:ride.badges,tip:!result.late && points>=1200?25:0,character:undefined},scoreYardJob)
+      }}/>}
       {screen === 'yard' && jobConfig && (
         <YardJob market={cities[jobConfig.city].name} characterId={save.activeCharacter} perks={save.perks} upgrades={save.upgrades} level={save.level}
           scoopOnly={jobConfig.type !== 'yard'} rush={jobConfig.urgency} delay={jobConfig.ride.delay} ridePoints={jobConfig.ride.points} onCallout={calloutLine}

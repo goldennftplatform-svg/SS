@@ -1,0 +1,51 @@
+import React, { useEffect, useRef, useState } from 'react'
+import { audio } from '../audio/chiptune.js'
+
+// A stripe runs until a hedge or edge. Reflections keep the same solvability.
+const lawn=['..#...','......','......','...#..','#....#','#.##.#']
+const keys={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1],a:[-1,0],d:[1,0],w:[0,-1],s:[0,1]}
+const total=lawn.join('').replaceAll('#','').length
+export default function MowerMaze({city,level,ride,onFinish,onQuit}) {
+  const rows=city%2?lawn.map(row=>[...row].reverse().join('')):lawn
+  const initial=city%2?5:0
+  const [pos,setPos]=useState(initial),[cut,setCut]=useState(()=>new Set([initial])),[moves,setMoves]=useState(0)
+  const [hint,setHint]=useState('Pick a direction. The mower stops at a hedge or fence.')
+  const busy=useRef(false),timer=useRef(),act=useRef(),done=useRef(false)
+  const fuel=Math.max(18,26-Math.min(4,level-1)-ride.delay)
+  act.current=(dx,dy)=>{
+    if(busy.current||done.current)return
+    let x=pos%6,y=Math.floor(pos/6);const path=[]
+    while(rows[y+dy]?.[x+dx]==='.'){x+=dx;y+=dy;path.push(y*6+x)}
+    if(!path.length){setHint('Blocked here. Try another direction.');return}
+    busy.current=true
+    const next=new Set(cut),turn=moves+1
+    setMoves(turn);let i=0
+    timer.current=setInterval(()=>{
+      const tile=path[i++];next.add(tile);setPos(tile);setCut(new Set(next))
+      if(i===path.length){
+        clearInterval(timer.current);busy.current=false
+        const gain=next.size-cut.size
+        setHint(gain?`Fresh stripe! ${gain} new squares cut.`:'Already trimmed. Aim for the tall grass.')
+        if(gain)audio.scoop()
+        const win=next.size===total
+        if(win||turn>=fuel){
+          done.current=true
+          onFinish({late:!win,mistakes:0,performance:win?Math.max(.65,1-(turn-16)*.025):.45*next.size/total,
+            servicePoints:Math.round(next.size/total*1000),serviceLabel:`${next.size}/${total} squares trimmed in ${turn} stripes`})
+        }
+      }
+    },85)
+  }
+  useEffect(()=>{
+    const key=e=>{const dir=keys[e.key];if(dir){e.preventDefault();if(!e.repeat)act.current(...dir)}}
+    window.addEventListener('keydown',key);return()=>{clearInterval(timer.current);window.removeEventListener('keydown',key)}
+  },[])
+  return <section className="mow-mode"><header><button onClick={onQuit}>← Map</button><b>SCUPH · MOWER MAZE</b></header>
+    <main><small>LEG 02 / LAWN SERVICE</small><h1>Stripe the whole lawn.</h1>
+    <div className="mow-stats"><b>🌱 {cut.size}/{total} cut</b><b>⚡ {fuel-moves} stripes left</b></div>
+    <div className="mow-board" aria-label="Lawn puzzle">{rows.join('').split('').map((ch,i)=><div key={i} className={ch==='#'?'hedge':cut.has(i)?'trim':'tall'}>
+      {i===pos?<span className="mower" aria-label="Mower">🚜</span>:ch==='#'?'🌳':cut.has(i)?'':'〃'}</div>)}</div>
+    <p role="status">{hint}</p>
+    <div className="mow-pad">{[['←',-1,0,'left'],['↑',0,-1,'up'],['↓',0,1,'down'],['→',1,0,'right']].map(([s,x,y,label])=><button key={s} aria-label={`Mow ${label}`} onClick={()=>act.current(x,y)}>{s}</button>)}</div>
+    <small>Arrow keys / WASD or tap a direction</small></main></section>
+}

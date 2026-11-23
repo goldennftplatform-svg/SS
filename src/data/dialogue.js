@@ -27,8 +27,10 @@ export const SCRIPTS = {
     L('customer', 'Oh! You found it. I was about to get the rake. No rush,Scūphr.'),
   ],
   routeStart: [
+    L('dispatch', 'Your eBike has two assist charges. Use Shift or Boost before a gap for extra points. Follow the opening arrows at work fences.'),
     L('dispatch', 'Ride to the client, park, then work the yard on foot. Jump the road gaps for points. Haul five piles back to your bike. Finish on time with 1,200 points for 25 extra coins.'),
   ],
+  mowerStart: [L('dispatch','Ride to the client, then stripe the whole lawn. Your mower goes straight until it reaches a hedge. Leave yourself room to turn!')],
   yardStart: [
     L('customer', 'Bushes, piles, grass, leaves — and my truck is the dump point.'),
     L('scoops', 'Carry only what you can haul. Keep moving or the chain dies. No farming today!'),

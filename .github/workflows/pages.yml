@@ -24,6 +24,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_RANKS_URL: ${{ vars.VITE_RANKS_URL }}
+          VITE_RANKS_KEY: ${{ vars.VITE_RANKS_KEY }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

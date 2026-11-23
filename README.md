@@ -51,6 +51,12 @@ See [`docs/GDD.md`](docs/GDD.md) for the full design.
 
 ## How to play (controls)
 
+**Rider Club:** open the map's Rider leaderboard and pick a nickname (no email). On-time scores are saved per mode on this browser. Share a challenge link to send a friend a score to beat; links work on Pages without a backend. This is asynchronous competition, not simultaneous races. Campaign progress is local to the device.
+
+For the optional shared top 20, apply `docs/leaderboard.sql` to a Supabase project, enable anonymous sign-ins, then set repository Actions variables `VITE_RANKS_URL` and `VITE_RANKS_KEY` (project URL and **publishable/anon** key only) and redeploy. The board uses a browser-bound anonymous session; clearing browser storage loses that identity. Scores are client-reported for friendly play, not verified prize eligibility.
+
+**eBike:** two motor-assist charges per trip (Shift or Boost). A boosted gap clear earns 25 extra points. **Mower Maze:** ride to the lawn, then use arrows/WASD or the direction buttons to mow until a hedge stops you. Trim every square before the stripe budget runs out.
+
 | Action | Keyboard | Mobile |
 |---|---|---|
 | Start the bike dispatch | Activate Pedal button | Tap Pedal |

@@ -103,6 +103,8 @@ export function rideRenderer(canvas, {night, gaps, paws, fences, opening, length
         for(const px of [left,end])stroke(g,'#313638',2.4*s,px,cy,px,top-2*s)
         stroke(g,'#bd774a',6*s,left,top,end,top)
         for(let j=0;j<10;j++){const u=left+(end-left)*(j+.2)/10;stroke(g,'#f5dfb0',2*s,u,top+2*s,u+2*s,top-2*s)}
+        const pass=cx+o.side*.82*w*(.012+.248*p)
+        stroke(g,'#a5e7be',2*s,pass-4*s,cy+2*s,pass,cy-2*s,pass+4*s,cy+2*s)
       }else{
         poly(g,'#20292c',cx-rw,cy-2*s,cx+rw,cy-2*s,cx+rw,cy+3*s,cx-rw,cy+3*s)
         stroke(g,'#e9bf72',1.6*s,cx-rw,cy+3*s,cx+rw,cy+3*s)
@@ -127,7 +129,9 @@ export function rideRenderer(canvas, {night, gaps, paws, fences, opening, length
     stroke(g,'#344a48',3.5,8,-47,15,-37,12,-34)
     oval(g,'#b5bcae',0,-54,7,7);stroke(g,'#536561',1.6,-3,-60,-2,-53)
     for(const a of [-1,1]){poly(g,'#33574e',a*4,-23,a*14,-22,a*13,-9,a*5,-8);stroke(g,'#d3af75',1.6,a*5,-20,a*13,-19)}
+    g.fillStyle='#182d31';g.fillRect(-4,-32,8,12);g.fillStyle=r.t<r.assistUntil?'#a9fff1':'#83cbb1';g.fillRect(-2,-30,4,2+r.cells*2)
     oval(g,'#f39c77',0,-24,2.3,1.3);g.restore()
+    if(r.hitUntil>r.t){g.strokeStyle='#eb8459';g.lineWidth=5;g.strokeRect(2,2,w-4,h-4)}
   }
   resize()
   return paint
