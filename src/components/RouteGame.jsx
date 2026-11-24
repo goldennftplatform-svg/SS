@@ -24,11 +24,11 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
   const [, frame] = useState(0)
   const canvas=useRef(null), painter=useRef(null)
   useEffect(()=>{
-    const draw=rideRenderer(canvas.current,{night:urgency,gaps:GAPS,paws:PAWS,fences:FENCES,opening,length:LENGTH,lift,jersey:char.id==='sir-scoops'?'#39675b':char.color})
+    const draw=rideRenderer(canvas.current,{market,night:urgency,gaps:GAPS,paws:PAWS,fences:FENCES,opening,length:LENGTH,lift,jersey:char.id==='sir-scoops'?'#39675b':char.color})
     painter.current=draw;draw(run)
     const observer=new ResizeObserver(()=>draw(run));observer.observe(canvas.current)
     return ()=>{observer.disconnect();painter.current=null}
-  },[run,urgency,opening,char])
+  },[run,urgency,opening,char,market])
   const finish = useRef(onFinish); finish.current = onFinish
   const hop = () => {
     if(!started)return
@@ -68,11 +68,13 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
           audio.coin()
         } else { run.mistakes++; run.message=`HIT: road gap #${run.gapIndex} · ${height===0?'wheels on ground':'jump too low'}`; run.hitUntil=run.t+.45; audio.hurt() }
         run.messageUntil=run.t+1.1
+        run.fx={time:run.t,lane:run.x,height,kind:height<clearance?'hit':height>.80&&Math.abs(lane-run.x)<.24?'paw':'clear'}
       }
       const fence=FENCES[run.coneIndex]
       if (fence && run.distance>=fence.at) {
         run.coneIndex++
         if (run.x*fence.side<opening) {run.mistakes++;run.message=`HIT: work fence #${run.coneIndex} · opening was ${fence.side>0?'RIGHT':'LEFT'}`;run.messageUntil=run.t+1.25;run.hitUntil=run.t+.45;audio.hurt()}
+        if(run.x*fence.side<opening)run.fx={time:run.t,lane:run.x,height,kind:'hit'}
       }
       if (run.distance>=LENGTH) {
         finish.current({ points:run.gaps*75+run.badges*50+run.bonus, gaps:run.gaps, badges:run.badges, mistakes:run.mistakes, delay:Math.min(4,run.mistakes) })

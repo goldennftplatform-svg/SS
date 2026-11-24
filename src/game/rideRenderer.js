@@ -1,6 +1,8 @@
 // A cached painted backdrop plus a small, depth-sorted foreground. World units
 // are independent of device pixels; the same contacts drive art and physics.
-export function rideRenderer(canvas, {night, gaps, paws, fences, opening, length, lift, jersey}) {
+import { scenery, contactBurst } from './routeScenery.js'
+export function rideRenderer(canvas, {market,night, gaps, paws, fences, opening, length, lift, jersey}) {
+  const terrain=scenery(market), motion=window.matchMedia('(prefers-reduced-motion: reduce)')
   const g=canvas.getContext('2d',{alpha:false}), sky=document.createElement('canvas')
   const bg=sky.getContext('2d')
   let w=1,h=1,ratio=1
@@ -32,10 +34,16 @@ export function rideRenderer(canvas, {night, gaps, paws, fences, opening, length
     poly(bg,night?'#374962':'#788d93',.535,.099,.56,.123,.59,.119,.68,.21,.72,.25,.61,.199,.57,.159,.58,.181)
     bg.restore()
     for(let layer=0;layer<2;layer++){
+      bg.fillStyle=(night?['#465769','#394e59']:['#859997','#708780'])[layer]
+      bg.beginPath();bg.moveTo(0,h*.42)
+      for(let i=0;i<=96;i++)bg.lineTo(w*i/96,h*(.31+.038*layer-.145*terrain.ridge(i/16,layer)))
+      bg.lineTo(w,h*.42);bg.closePath();bg.fill()
+    }
+    for(let layer=0;layer<2;layer++){
       const ink=(night?['#334957','#203d41']:['#718780','#475f55'])[layer]
       for(let i=-2;i<=100;i++){
-        const y=h*(.32+layer*.052+.022*Math.sin(i*.094+layer*2))
-        pine(bg,i*w/96,y,h*(.037+.022*(1+Math.sin(i*45.3))),ink)
+        const y=h*(.36+layer*.045-.064*terrain.ridge(i/14,layer+2))
+        pine(bg,i*w/96,y,h*(.037+.044*terrain.hash(i,layer)),ink)
         bg.fillStyle=ink;bg.fillRect(i*w/96,y-2,w/96+1,h-y+3)
       }
     }
@@ -43,7 +51,8 @@ export function rideRenderer(canvas, {night, gaps, paws, fences, opening, length
   const props=[]
   for(let at=0;at<length+27;at+=3){
     const n=at/3
-    props.push({at,side:n%2?1:-1,kind:n%9===3?'cabin':n%5===0?'lamp':'pine'})
+    const pick=terrain.hash(n,12)
+    props.push({at:at+terrain.hash(n,10),side:terrain.hash(n,11)>.5?1:-1,kind:pick<.22?'cabin':pick<.4?'lamp':'pine'})
   }
   fences.forEach(f=>props.push({...f,kind:'fence'}))
   gaps.forEach((at,i)=>props.push({at,side:paws[i],kind:'gap'}))
@@ -131,6 +140,7 @@ export function rideRenderer(canvas, {night, gaps, paws, fences, opening, length
     for(const a of [-1,1]){poly(g,'#33574e',a*4,-23,a*14,-22,a*13,-9,a*5,-8);stroke(g,'#d3af75',1.6,a*5,-20,a*13,-19)}
     g.fillStyle='#182d31';g.fillRect(-4,-32,8,12);g.fillStyle=r.t<r.assistUntil?'#a9fff1':'#83cbb1';g.fillRect(-2,-30,4,2+r.cells*2)
     oval(g,'#f39c77',0,-24,2.3,1.3);g.restore()
+    if(!motion.matches)contactBurst(g,r.fx,r.t,w,h)
     if(r.hitUntil>r.t){g.strokeStyle='#eb8459';g.lineWidth=5;g.strokeRect(2,2,w-4,h-4)}
   }
   resize()
