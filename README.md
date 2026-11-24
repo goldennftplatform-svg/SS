@@ -55,7 +55,7 @@ See [`docs/GDD.md`](docs/GDD.md) for the full design.
 
 For the optional shared top 20, apply `docs/leaderboard.sql` to a Supabase project, enable anonymous sign-ins, then set repository Actions variables `VITE_RANKS_URL` and `VITE_RANKS_KEY` (project URL and **publishable/anon** key only) and redeploy. The board uses a browser-bound anonymous session; clearing browser storage loses that identity. Scores are client-reported for friendly play, not verified prize eligibility.
 
-**eBike:** two motor-assist charges per trip (Shift or Boost). A boosted gap clear earns 25 extra points. **Mower Maze:** ride to the lawn, then use arrows/WASD or the direction buttons to mow until a hedge stops you. Trim every square before the stripe budget runs out.
+**eBike:** two motor-assist charges per trip (Shift or Boost). A boosted gap clear earns 25 extra points. **Mower Maze:** starts directly on the lawn. Use arrows/WASD or the direction buttons to mow until a hedge stops you. Trim every square; finish in 20 stripes or fewer for 25 extra coins.
 
 | Action | Keyboard | Mobile |
 |---|---|---|

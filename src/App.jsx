@@ -73,10 +73,11 @@ export default function App() {
     const config = { city, type: jobType, urgency: type === 'urgent' }
     setJobConfig(config)
     audio.select()
+    if(type==='mower'){setScreen('mower');return}
     const seen = save.dialogueSeen?.includes('dispatch')
     const lines = [
       ...(seen ? [] : buildLines('dispatch', { city: market.name, job: jobType === 'mower'?'mowing visit':jobType === 'yard' ? 'yard refresh' : 'scoop visit' })),
-      ...buildLines(jobType==='mower'?'mowerStart':'routeStart', {}),
+      ...buildLines('routeStart', {}),
     ]
     afterDialogue.current = () => {
       setSave((s) => markDialogue(s, 'dispatch'))
@@ -91,8 +92,10 @@ export default function App() {
     const previousBest = save.routeRecords?.[recordKey] || 0
     {
       rewards.coins += result.tip
-      rewards.routeCard = `Ride ${jobConfig.ride.points} + service ${result.points-jobConfig.ride.points} = ${result.points} pts · ${result.serviceLabel || `${result.delivered}/5 piles hauled`} · ${result.tip ? `+${result.tip} coins for the 1,200-point target` : result.late ? 'Service incomplete' : 'Target: 1,200 pts'}`
-      rewards.routeCard += ` · ${result.badges}/3 brass paws${!result.late && result.points > previousBest ? ' · New town best!' : previousBest ? ` · Town best: ${previousBest}` : ''}`
+      rewards.routeCard = jobConfig.type==='mower'
+        ? `${result.serviceLabel} · ${result.points} lawn pts${result.tip?' · +25 coins for efficient mowing':''}`
+        : `Ride ${jobConfig.ride.points} + service ${result.points-jobConfig.ride.points} = ${result.points} pts · ${result.delivered}/5 piles hauled · ${result.tip ? `+${result.tip} coins for the 1,200-point target` : result.late ? 'Service incomplete' : 'Target: 1,200 pts'} · ${result.badges}/3 brass paws`
+      rewards.routeCard += !result.late && result.points > previousBest ? ' · New town best!' : previousBest ? ` · Town best: ${previousBest}` : ''
     }
     const late = !!result.late
     if(!late){
@@ -222,11 +225,10 @@ export default function App() {
         <small>SCUPH BIKE DISPATCH · LEG 1 COMPLETE</small><h2>Parked at the client’s gate</h2>
         <p>{jobConfig.ride.points} ride points · {jobConfig.ride.delay ? `Road delay: −${jobConfig.ride.delay} ${jobConfig.type==='mower'?'stripes':'seconds'}` : 'Clean ride: full service budget'}</p>
         <p>{jobConfig.type==='mower'?'Trim every grass square. Each direction sends the mower straight to the next hedge. Plan your turns before your stripe budget runs out.':'Walk over piles to scoop. Return to the parked eBike to unload five piles for 200 points each.'}{jobConfig.type === 'yard' && ' This refresh also includes finding, mowing and raking.'}</p>
-        <button className="btn btn-primary" onClick={()=>setScreen(jobConfig.type==='mower'?'mower':'yard')}>{jobConfig.type==='mower'?'Park & start mower':'Dismount & start service'} →</button>
+        <button className="btn btn-primary" onClick={()=>setScreen('yard')}>Dismount & start service →</button>
       </div></div>}
-      {screen==='mower' && <MowerMaze city={jobConfig.city} level={save.level} ride={jobConfig.ride} onQuit={()=>setScreen('map')} onFinish={result=>{
-        const ride=jobConfig.ride,points=ride.points+result.servicePoints
-        completeJob({...result,points,badges:ride.badges,tip:!result.late && points>=1200?25:0,character:undefined},scoreYardJob)
+      {screen==='mower' && <MowerMaze city={jobConfig.city} level={save.level} onQuit={()=>setScreen('map')} onFinish={result=>{
+        completeJob({...result,points:result.servicePoints,tip:!result.late && result.servicePoints>=1200?25:0},scoreYardJob)
       }}/>}
       {screen === 'yard' && jobConfig && (
         <YardJob market={cities[jobConfig.city].name} characterId={save.activeCharacter} perks={save.perks} upgrades={save.upgrades} level={save.level}
