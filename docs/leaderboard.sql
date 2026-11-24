@@ -8,7 +8,7 @@ create table if not exists public.rider_scores (
 );
 alter table public.rider_scores enable row level security;
 alter table public.rider_scores drop constraint if exists rider_scores_mode_check;
-alter table public.rider_scores add constraint rider_scores_mode_check check(mode in ('route','yard','urgent','mower','walk'));
+alter table public.rider_scores add constraint rider_scores_mode_check check(mode in ('route','yard','urgent','mower','walk','fetch'));
 revoke all on public.rider_scores from public, anon, authenticated;
 grant select(mode,nickname,points) on public.rider_scores to authenticated;
 drop policy if exists rider_read on public.rider_scores;

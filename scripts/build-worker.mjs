@@ -1,10 +1,14 @@
-import {readFile,writeFile} from 'node:fs/promises'
+import {readFile,writeFile,readdir} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
 const html=await readFile('dist/index.html','utf8')
 const files=['./','./index.html','./manifest.webmanifest','./assets/brand/scuph-logo.png',
   ...['apple','192','512','maskable'].map(i=>`./icons/${i}.png`),
   ...[...html.matchAll(/(?:src|href)="(\.\/assets\/[^"]+\.(?:js|css))"/g)].map(m=>m[1])]
 const hash=createHash('sha256')
+for(const name of await readdir('dist/assets')){
+  const url='./assets/'+name
+  if(name.endsWith('.js')&&!files.includes(url))files.push(url)
+}
 for(const file of files.slice(1))hash.update(await readFile('dist/'+file))
 await writeFile('dist/sw.js',`
 const prefix='scuph-safari:'+self.registration.scope+':'

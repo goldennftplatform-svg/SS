@@ -6,7 +6,11 @@ let page = await read('index.html')
 const js = page.match(/<script[^>]+src="([^"]+)"[^>]*><\/script>/)
 const css = page.match(/<link[^>]+href="([^"]+\.css)"[^>]*>/)
 const logo = await readFile('dist/assets/brand/scuph-logo.png')
-const code = (await read(js[1])).replaceAll('./assets/brand/scuph-logo.png', `data:image/png;base64,${logo.toString('base64')}`).replace(/<\/script/gi,'<\\/script')
+let code = (await read(js[1])).replaceAll('./assets/brand/scuph-logo.png', `data:image/png;base64,${logo.toString('base64')}`).replace(/<\/script/gi,'<\\/script')
+for(const [expr,name] of [...code.matchAll(/import\("\.\/([^"/]+\.js)"\)/g)]){
+  const chunk=await readFile(resolve('dist/assets',name))
+  code=code.replace(expr,()=>`import("data:text/javascript;base64,${chunk.toString('base64')}")`)
+}
 const style = await read(css[1])
 page = page.replace(js[0], '').replace(css[0], () => `<style>${style}</style>`)
   .replace(/<link[^>]+https:\/\/fonts\.[^>]+>/g, '')

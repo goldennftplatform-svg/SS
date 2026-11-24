@@ -4,6 +4,7 @@ import Hub from './components/Hub.jsx'
 import RouteGame from './components/RouteGame.jsx'
 import MowerMaze from './components/MowerMaze.jsx'
 import PackWalk from './components/PackWalk.jsx'
+import FetchRelay from './components/FetchRelay.jsx'
 import RiderBoard from './components/RiderBoard.jsx'
 import {challenge,recordScore,syncBoard,profile,onlineRanks} from './game/riders.js'
 import YardJob from './components/YardJob.jsx'
@@ -74,7 +75,7 @@ export default function App() {
     const config = { city, type: jobType, urgency: type === 'urgent' }
     setJobConfig(config)
     audio.select()
-    if(type==='mower'||type==='walk'){setScreen(type);return}
+    if(['mower','walk','fetch'].includes(type)){setScreen(type);return}
     const seen = save.dialogueSeen?.includes('dispatch')
     const lines = [
       ...(seen ? [] : buildLines('dispatch', { city: market.name, job: jobType === 'mower'?'mowing visit':jobType === 'yard' ? 'yard refresh' : 'scoop visit' })),
@@ -93,7 +94,9 @@ export default function App() {
     const previousBest = save.routeRecords?.[recordKey] || 0
     {
       rewards.coins += result.tip
-      rewards.routeCard = jobConfig.type==='walk'
+      rewards.routeCard = jobConfig.type==='fetch'
+        ? `${result.serviceLabel} · ${result.points} relay pts${result.tip?' · +25 coins for speedy returns':''}`
+        : jobConfig.type==='walk'
         ? `${result.serviceLabel} · ${result.points} walk pts${result.tip?' · +25 coins for a happy pack':''}`
         : jobConfig.type==='mower'
         ? `${result.serviceLabel} · ${result.points} lawn pts${result.tip?' · +25 coins for efficient mowing':''}`
@@ -234,6 +237,7 @@ export default function App() {
         completeJob({...result,points:result.servicePoints,tip:!result.late && result.servicePoints>=1200?25:0},scoreYardJob)
       }}/>}
       {screen==='walk' && <PackWalk level={save.level} market={cities[jobConfig.city].name} onQuit={()=>setScreen('map')} onFinish={r=>completeJob(r,scoreRoute)}/>}
+      {screen==='fetch' && <FetchRelay onQuit={()=>setScreen('map')} onFinish={r=>completeJob(r,scoreRoute)}/>}
       {screen === 'yard' && jobConfig && (
         <YardJob market={cities[jobConfig.city].name} characterId={save.activeCharacter} perks={save.perks} upgrades={save.upgrades} level={save.level}
           scoopOnly={jobConfig.type !== 'yard'} rush={jobConfig.urgency} delay={jobConfig.ride.delay} ridePoints={jobConfig.ride.points} onCallout={calloutLine}

@@ -51,6 +51,8 @@ See [`docs/GDD.md`](docs/GDD.md) for the full design.
 
 ## How to play (controls)
 
+**Fetch Relay:** pick a dog and tap a numbered tennis ball. Send three dogs out in parallel, then reassign each as soon as it gets home. Retrieve all six balls in 60 seconds. The park uses [Recast & Detour](https://github.com/recastnavigation/recastnavigation) through [recast-navigation-js](https://github.com/isaac-mason/recast-navigation-js): Recast builds walkable polygons excluding the hedge beds, and DetourCrowd finds routes and steers each dog around its teammates at runtime.
+
 **Pack Walk:** start directly on the trail with Maple. Pepper, Waffles and Fern join at checkpoints. Change lanes with arrows/A/D or touch. Use Space or Heel to bunch the pack for 1.4 seconds; the whistle resets at the next obstacle. Guide every dog past squirrels and puddles and onto narrow bridges. Five clean passes complete the walk, eight award a 25-coin tip.
 
 **Rider Club:** open the map's Rider leaderboard and pick a nickname (no email). On-time scores are saved per mode on this browser. Share a challenge link to send a friend a score to beat; links work on Pages without a backend. This is asynchronous competition, not simultaneous races. Campaign progress is local to the device.

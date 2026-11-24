@@ -6,7 +6,7 @@ import Install from './Install.jsx'
 import './region.css'
 import colors from '../data/palette.json'
 
-const missions = { yard: '🚜 Yard refresh', route: '⚡ eBike route', urgent: '🚨 Rush cleanup', mower: '🌱 Mower Maze', walk:'🐕 Pack Walk' }
+const missions = { yard: '🚜 Yard refresh', route: '⚡ eBike route', urgent: '🚨 Rush cleanup', mower: '🌱 Mower Maze', walk:'🐕 Pack Walk', fetch:'🎾 Fetch Relay' }
 const emojiFor = { yard: '🍂', route: '🚲', urgent: '🚨' }
 
 // Bisect the atlas between towns to draw adjoining claimable districts.
