@@ -48,7 +48,7 @@ export default function PackWalk({level,market,onFinish,onQuit}){
       })
       if(r.elapsed>=duration){
         const bad=r.x.findIndex(x=>kind==='bridge'?Math.abs(x-at)>17:Math.abs(x-at)<20)
-        if(bad===-1){r.clear++;r.feedback=`Clean pass · +150 pts`;audio.coin()}
+        if(bad===-1){r.clear++;r.feedback=r.heel&&kind==='bridge'?'Tight formation! Every paw on the boards · +150 pts':'Clean pass · +150 pts';audio.coin()}
         else {r.feedback=`${dogs[bad].name} ${kind==='bridge'?'stepped off the boards':kind==='squirrel'?'chased a squirrel':'splashed a puddle'} · no points`;audio.hurt()}
         r.elapsed=0;r.leg++;r.used=false;r.heel=false
         if(r.leg===trail.length){
@@ -69,17 +69,19 @@ export default function PackWalk({level,market,onFinish,onQuit}){
     <small>{market} / DOG WALKING</small><h1>Walk the whole pack.</h1>
     <div className="mow-stats"><b>🐾 {r.x.length}/4 dogs</b><b>{r.clear}/9 clean passes</b></div>
     <p className="pack-order">{!started?'Guide Maple home. Three friends join on the way.':`${icons[kind]} ${kind==='bridge'?'Narrow bridge':kind==='squirrel'?'Squirrel ahead':'Puddle ahead'} · move ${dir}`}</p>
-    <svg className="pack-trail" viewBox="0 0 100 90" role="img" aria-label={`Trail with ${r.x.length} leashed dogs. ${kind} ahead.`}>
+    <svg className="pack-trail" viewBox="0 0 100 90" role="img" aria-label={`Trail with ${r.x.length} leashed dogs. ${kind} ahead.`}
+      onPointerDown={e=>{if(!started||r.finished)return;const box=e.currentTarget.getBoundingClientRect();r.lane=Math.max(0,Math.min(2,Math.floor((e.clientX-box.left)/box.width*3)));draw()}}>
       <rect width="100" height="90" fill="#547452"/><path d="M9 0h82l5 90H4z" fill="#ad9670"/>
       {[17,50,82].map(x=><path key={x} d={`M${x} 0v90`} stroke="#ead7aa" strokeDasharray="1 5" opacity=".5"/>)}
       {kind==='bridge'?<g><rect y={y-4} width="100" height="8" fill="#53858a"/><rect x={at-17} y={y-5} width="34" height="10" fill="#745638"/>{[0,1,2,3,4].map(i=><path key={i} d={`M${at-16} ${y-4+i*2}h32`} stroke="#c4a57b"/>)}</g>:<g><ellipse cx={at} cy={y} rx="19" ry="5" fill={kind==='puddle'?'#487e85':'#a78355'}/><text x={at} y={y+2} textAnchor="middle" fontSize="9">{icons[kind]}</text></g>}
       {r.x.map((x,i)=><path key={i} d={`M${lanes[r.lane]} 80Q${(x+lanes[r.lane])/2} 78 ${x} 67`} fill="none" stroke={r.heel?'#ffdf80':'#443b30'} strokeWidth=".8"/>)}
       {r.x.map((x,i)=><Pup key={i} dog={dogs[i]} x={x} y={67+(i%2)*2}/>)}
       <circle cx={lanes[r.lane]} cy="81" r="4" fill="#244c46" stroke="#ead5a2"/>
+      {r.heel&&<g pointerEvents="none"><ellipse cx={lanes[r.lane]} cy="68" rx={7+4*Math.sin((r.until-r.time)*4)**2} ry="7" fill="none" stroke="#fff0a4" strokeWidth=".9" strokeDasharray="2 1"/><text x={lanes[r.lane]} y="59" textAnchor="middle" fill="#20362c" fontSize="3.6" fontWeight="bold">AT HEEL</text></g>}
     </svg>
     <small>{dogs.slice(0,r.x.length).map(d=>d.name).join(' · ')}</small>
     <p role="status">{r.feedback||'Avoid puddles and squirrels. Fit every pup on the bridge.'}</p>
     {!started?<button onClick={()=>start(true)}>Leash up & walk →</button>:<div className="mow-pad"><button aria-label="Walk left" onClick={()=>steer(-1)}>←</button><button disabled={r.used} onClick={recall}>{r.heel?'Pack at heel':r.used?'Whistle resting':'📣 Heel!'}</button><button aria-label="Walk right" onClick={()=>steer(1)}>→</button></div>}
-    <p>← → change lanes · Space calls dogs close for 1.4s, once per obstacle. Clear 5 to finish; 8 earn the tip.</p>
+    <p>Tap a lane or steer with ← →. Space calls dogs close for 1.4s, once per obstacle. Clear 5 to finish; 8 earn the tip.</p>
   </main></section>
 }

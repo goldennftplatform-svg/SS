@@ -30,14 +30,18 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     return ()=>{observer.disconnect();painter.current=null}
   },[run,urgency,opening,char])
   const finish = useRef(onFinish); finish.current = onFinish
-  const hop = () => { if (started && run.t-run.jump > 1.15) run.jump=run.t }
+  const hop = () => {
+    if(!started)return
+    if(run.t-run.jump>=1.15)run.jump=run.t
+    else if(run.t-run.jump>=1.01)run.hopQueued=true
+  }
   useEffect(() => {
     if (!started) return
     const key = (e, down) => {
       const k = e.key.toLowerCase()
       if (!['arrowleft','arrowright','a','d',' ','shift'].includes(k)) return
       e.preventDefault()
-      if (k === ' ' && down && !e.repeat && run.t-run.jump > 1.15) run.jump=run.t
+      if (k === ' ' && down && !e.repeat)hop()
       if(k==='shift' && down && !e.repeat)assist()
       keys.current[k]=down
     }
@@ -47,6 +51,7 @@ export default function RouteGame({ market, characterId, urgency, upgrades, leve
     const tick=now=>{
       const dt=Math.max(0,Math.min(.06,(now-last)/1000)); last=now
       run.t+=dt
+      if(run.hopQueued && run.t-run.jump>=1.15){run.hopQueued=false;run.jump=run.t}
       const k=keys.current
       run.x=clamp(run.x+((k.arrowright||k.d?1:0)-(k.arrowleft||k.a?1:0))*dt*2.5)
       const boosted=run.t<run.assistUntil
