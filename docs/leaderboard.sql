@@ -1,12 +1,14 @@
 -- Supabase/PostgreSQL. Enable anonymous sign-ins in Auth settings.
 create table if not exists public.rider_scores (
  rider uuid not null references auth.users(id) on delete cascade,
- mode text not null check (mode in ('route','yard','urgent','mower')),
+ mode text not null,
  nickname text not null check (nickname ~ '^[A-Za-z0-9][A-Za-z0-9 _-]{1,15}$'),
  points int not null check (points between 0 and 1425),
  primary key(rider,mode)
 );
 alter table public.rider_scores enable row level security;
+alter table public.rider_scores drop constraint if exists rider_scores_mode_check;
+alter table public.rider_scores add constraint rider_scores_mode_check check(mode in ('route','yard','urgent','mower','walk'));
 revoke all on public.rider_scores from public, anon, authenticated;
 grant select(mode,nickname,points) on public.rider_scores to authenticated;
 drop policy if exists rider_read on public.rider_scores;

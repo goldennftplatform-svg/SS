@@ -1,5 +1,5 @@
 const KEY='scuph-rider-v1', AUTH='scuph-rider-session-v1'
-export const modes={route:'eBike route',urgent:'Rush cleanup',yard:'Yard refresh',mower:'Mower Maze'}
+export const modes={route:'eBike route',urgent:'Rush cleanup',yard:'Yard refresh',mower:'Mower Maze',walk:'Pack Walk'}
 export const validName=n=>typeof n==='string' && /^[A-Za-z0-9][A-Za-z0-9 _-]{1,15}$/.test(n)
 export function profile(){try{return JSON.parse(localStorage.getItem(KEY))||{name:'',best:{}}}catch{return {name:'',best:{}}}}
 export function saveName(name){if(!validName(name))throw Error('Use 2–16 letters, numbers, spaces, dashes or underscores.');localStorage.setItem(KEY,JSON.stringify({...profile(),name}))}

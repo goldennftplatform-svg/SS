@@ -51,6 +51,8 @@ See [`docs/GDD.md`](docs/GDD.md) for the full design.
 
 ## How to play (controls)
 
+**Pack Walk:** start directly on the trail with Maple. Pepper, Waffles and Fern join at checkpoints. Change lanes with arrows/A/D or touch. Use Space or Heel to bunch the pack for 1.4 seconds; the whistle resets at the next obstacle. Guide every dog past squirrels and puddles and onto narrow bridges. Five clean passes complete the walk, eight award a 25-coin tip.
+
 **Rider Club:** open the map's Rider leaderboard and pick a nickname (no email). On-time scores are saved per mode on this browser. Share a challenge link to send a friend a score to beat; links work on Pages without a backend. This is asynchronous competition, not simultaneous races. Campaign progress is local to the device.
 
 For the optional shared top 20, apply `docs/leaderboard.sql` to a Supabase project, enable anonymous sign-ins, then set repository Actions variables `VITE_RANKS_URL` and `VITE_RANKS_KEY` (project URL and **publishable/anon** key only) and redeploy. The board uses a browser-bound anonymous session; clearing browser storage loses that identity. Scores are client-reported for friendly play, not verified prize eligibility.

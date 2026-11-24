@@ -46,3 +46,5 @@
 .mow-pad{justify-content:center}.mow-mode button{min-height:42px;min-width:48px;background:#ebcb87;border:1px solid #bb9654;color:#16312d;border-radius:5px;font-weight:800}
 .rider-board input,.rider-board select{background:#223e37;border:1px solid #8baf94;color:#fff4d6;border-radius:4px;padding:10px;max-width:100%;font:inherit}
 .rider-board form{display:grid;gap:10px}.rider-board li{text-align:left;padding:8px;border-bottom:1px solid #45685b}.rider-board li b{float:right}.rider-board h2{font-size:18px;margin-top:24px}
+.pack-trail{display:block;width:min(100%,43vh);margin:0 auto 5px;border:3px solid #ad956a;border-radius:8px;background:#547452}
+.pack-walk main{padding-top:8px}.pack-walk p{margin:8px 0}.pack-order{padding:5px;background:#25473b;color:#ffe2a0}.pack-walk .mow-pad button:disabled{opacity:.65}

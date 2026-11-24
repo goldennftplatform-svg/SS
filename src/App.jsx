@@ -3,6 +3,7 @@ import Region from './components/Region.jsx'
 import Hub from './components/Hub.jsx'
 import RouteGame from './components/RouteGame.jsx'
 import MowerMaze from './components/MowerMaze.jsx'
+import PackWalk from './components/PackWalk.jsx'
 import RiderBoard from './components/RiderBoard.jsx'
 import {challenge,recordScore,syncBoard,profile,onlineRanks} from './game/riders.js'
 import YardJob from './components/YardJob.jsx'
@@ -39,7 +40,7 @@ export default function App() {
   useEffect(() => { audio.setLevel(save.level) }, [save.level])
   useEffect(() => {
     const track = screen === 'route' ? (jobConfig?.urgency ? 'urgent' : 'route')
-      : screen === 'yard' || screen === 'mower' ? 'yard' : 'main'
+      : ['yard','mower','walk'].includes(screen) ? 'yard' : 'main'
     audio.setTrack(track)
   }, [screen, jobConfig?.urgency])
 
@@ -73,7 +74,7 @@ export default function App() {
     const config = { city, type: jobType, urgency: type === 'urgent' }
     setJobConfig(config)
     audio.select()
-    if(type==='mower'){setScreen('mower');return}
+    if(type==='mower'||type==='walk'){setScreen(type);return}
     const seen = save.dialogueSeen?.includes('dispatch')
     const lines = [
       ...(seen ? [] : buildLines('dispatch', { city: market.name, job: jobType === 'mower'?'mowing visit':jobType === 'yard' ? 'yard refresh' : 'scoop visit' })),
@@ -92,7 +93,9 @@ export default function App() {
     const previousBest = save.routeRecords?.[recordKey] || 0
     {
       rewards.coins += result.tip
-      rewards.routeCard = jobConfig.type==='mower'
+      rewards.routeCard = jobConfig.type==='walk'
+        ? `${result.serviceLabel} · ${result.points} walk pts${result.tip?' · +25 coins for a happy pack':''}`
+        : jobConfig.type==='mower'
         ? `${result.serviceLabel} · ${result.points} lawn pts${result.tip?' · +25 coins for efficient mowing':''}`
         : `Ride ${jobConfig.ride.points} + service ${result.points-jobConfig.ride.points} = ${result.points} pts · ${result.delivered}/5 piles hauled · ${result.tip ? `+${result.tip} coins for the 1,200-point target` : result.late ? 'Service incomplete' : 'Target: 1,200 pts'} · ${result.badges}/3 brass paws`
       rewards.routeCard += !result.late && result.points > previousBest ? ' · New town best!' : previousBest ? ` · Town best: ${previousBest}` : ''
@@ -230,6 +233,7 @@ export default function App() {
       {screen==='mower' && <MowerMaze city={jobConfig.city} level={save.level} onQuit={()=>setScreen('map')} onFinish={result=>{
         completeJob({...result,points:result.servicePoints,tip:!result.late && result.servicePoints>=1200?25:0},scoreYardJob)
       }}/>}
+      {screen==='walk' && <PackWalk level={save.level} market={cities[jobConfig.city].name} onQuit={()=>setScreen('map')} onFinish={r=>completeJob(r,scoreRoute)}/>}
       {screen === 'yard' && jobConfig && (
         <YardJob market={cities[jobConfig.city].name} characterId={save.activeCharacter} perks={save.perks} upgrades={save.upgrades} level={save.level}
           scoopOnly={jobConfig.type !== 'yard'} rush={jobConfig.urgency} delay={jobConfig.ride.delay} ridePoints={jobConfig.ride.points} onCallout={calloutLine}
